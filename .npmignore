@@ -1,0 +1,37 @@
+# Test files
+tests/
+*.test.js
+test-results.json
+coverage/
+
+# Development files
+.github/
+.vscode/
+.idea/
+
+# Documentation (keep README.md)
+docs/legacy-*.md
+docs/IMPLEMENTATION-SUMMARY.md
+CLAUDE.md
+
+# Legacy code (not needed in published package)
+legacy/
+processors_old/
+
+# Git
+.git/
+.gitignore
+
+# Development
+jest.config.js
+.eslintrc
+.prettierrc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~

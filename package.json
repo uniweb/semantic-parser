@@ -1,0 +1,41 @@
+{
+    "name": "@uniweb/semantic-parser",
+    "version": "1.0.0",
+    "description": "Semantic parser for ProseMirror/TipTap content structures",
+    "type": "module",
+    "main": "./src/index.js",
+    "exports": {
+        ".": "./src/index.js",
+        "./mappers": "./src/mappers/index.js",
+        "./mappers/*": "./src/mappers/*.js"
+    },
+    "scripts": {
+        "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+        "test-report": "NODE_OPTIONS=--experimental-vm-modules jest --json > test-results.json 2>&1",
+        "test:groups": "NODE_OPTIONS=--experimental-vm-modules jest tests/processors/groups.test.js"
+    },
+    "keywords": [
+        "prosemirror",
+        "tiptap",
+        "parser",
+        "semantic",
+        "content"
+    ],
+    "author": "Proximify Inc.",
+    "license": "GPL-3.0-or-later",
+    "devDependencies": {
+        "jest": "^29.7.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/uniweb/semantic-parser.git"
+    },
+    "bugs": {
+        "url": "https://github.com/uniweb/semantic-parser/issues"
+    },
+    "homepage": "https://github.com/uniweb/semantic-parser#readme",
+    "directories": {
+        "doc": "docs",
+        "test": "tests"
+    }
+}
