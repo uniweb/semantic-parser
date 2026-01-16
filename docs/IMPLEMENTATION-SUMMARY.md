@@ -67,7 +67,7 @@ parseContent(doc, {
 Created `legacy()` extractor that transforms new parser output to exact legacy format:
 
 ```javascript
-const { parseContent, mappers } = require('@uniwebcms/semantic-parser');
+const { parseContent, mappers } = require('@uniweb/semantic-parser');
 
 const parsed = parseContent(doc, { pretitleLevel: 2, parseCodeAsJson: true });
 const legacy = mappers.extractors.legacy(parsed);
@@ -208,7 +208,7 @@ mv legacy/article-new.js legacy/article.js
 ```
 
 **Requirements:**
-- Add `@uniwebcms/semantic-parser` as dependency in the engine
+- Add `@uniweb/semantic-parser` as dependency in the engine
 
 ### Option B: Gradual Migration
 
@@ -236,7 +236,7 @@ mv legacy/article-new.js legacy/article.js
 ### Basic Usage (New Article Class)
 
 ```javascript
-import Article from '@uniwebcms/engine/legacy/article';
+import Article from '@uniweb/engine/legacy/article';
 
 const article = new Article(data, options);
 
@@ -249,7 +249,7 @@ console.log(article.parsed.items);
 ### Direct Parser Usage (New Code)
 
 ```javascript
-const { parseContent, mappers } = require('@uniwebcms/semantic-parser');
+const { parseContent, mappers } = require('@uniweb/semantic-parser');
 
 // Parse with legacy options
 const parsed = parseContent(doc, {
@@ -351,7 +351,7 @@ Components using `Article` don't need any changes.
 
 **The new Article class is ready for production!**
 
-It uses `@uniwebcms/semantic-parser` as a dependency and can replace the legacy Article class without breaking any existing code.
+It uses `@uniweb/semantic-parser` as a dependency and can replace the legacy Article class without breaking any existing code.
 
 ---
 

@@ -84,7 +84,7 @@ export default class Article {
         const rendered = this.instantiateData(data);
 
         // 2. Parse with legacy options
-        const { parseContent, mappers } = require('@uniwebcms/semantic-parser');
+        const { parseContent, mappers } = require('@uniweb/semantic-parser');
         const parsed = parseContent(rendered, {
             pretitleLevel: 2,        // H2 before H1
             parseCodeAsJson: true,   // Properties
@@ -442,8 +442,8 @@ export default class Article {
         // OLD: this.parsed = this.parse(this.elements);
 
         // NEW: Use semantic-parser
-        const { parseContent } = require('@uniwebcms/semantic-parser');
-        const { extractors } = require('@uniwebcms/semantic-parser/mappers');
+        const { parseContent } = require('@uniweb/semantic-parser');
+        const { extractors } = require('@uniweb/semantic-parser/mappers');
 
         const parsed = parseContent(this.content, {
             pretitleLevel: 2,         // Legacy H2 before H1

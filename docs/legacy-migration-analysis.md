@@ -343,7 +343,7 @@ export default class Article {
         // ... existing template logic ...
 
         // Use new parser instead of legacy parse()
-        const { parseContent } = require('@uniwebcms/semantic-parser');
+        const { parseContent } = require('@uniweb/semantic-parser');
         const parsed = parseContent(this.content);
 
         // Transform to legacy format

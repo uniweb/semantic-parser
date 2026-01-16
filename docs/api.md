@@ -7,7 +7,7 @@ Parses a ProseMirror/TipTap document into three semantic views.
 ### Import
 
 ```js
-import { parseContent } from '@uniwebcms/semantic-parser';
+import { parseContent } from '@uniweb/semantic-parser';
 ```
 
 ### Parameters
@@ -243,7 +243,7 @@ byType.getElementsByHeadingContext((heading) => heading.level === 2)
 ### Basic Usage
 
 ```js
-import { parseContent } from "@uniwebcms/semantic-parser";
+import { parseContent } from "@uniweb/semantic-parser";
 
 const doc = {
   type: "doc",

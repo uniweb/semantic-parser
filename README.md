@@ -1,4 +1,4 @@
-# @uniwebcms/semantic-parser
+# @uniweb/semantic-parser
 
 A semantic parser for ProseMirror/TipTap content structures that helps bridge the gap between natural content writing and component-based web development.
 
@@ -13,13 +13,13 @@ The parser transforms rich text editor content (ProseMirror/TipTap) into structu
 ## Installation
 
 ```bash
-npm install @uniwebcms/semantic-parser
+npm install @uniweb/semantic-parser
 ```
 
 ## Quick Start
 
 ```js
-import { parseContent } from "@uniwebcms/semantic-parser";
+import { parseContent } from "@uniweb/semantic-parser";
 
 // Your ProseMirror/TipTap document
 const doc = {
@@ -231,7 +231,7 @@ const data = mappers.extractBySchema(parsed, schema, { mode: 'build' });
 ### Using Pre-Built Extractors
 
 ```js
-import { parseContent, mappers } from "@uniwebcms/semantic-parser";
+import { parseContent, mappers } from "@uniweb/semantic-parser";
 
 const parsed = parseContent(doc);
 
@@ -298,7 +298,7 @@ After extracting content, render it using a Text component that handles paragrap
 ### Text Component Pattern
 
 ```jsx
-import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { parseContent, mappers } from '@uniweb/semantic-parser';
 import { H1, P } from './components/Text';
 
 const parsed = parseContent(doc);
@@ -324,7 +324,7 @@ See **[Text Component Reference](./docs/text-component-reference.md)** for imple
 Sanitize content at the engine level (during data preparation), not in components:
 
 ```javascript
-import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { parseContent, mappers } from '@uniweb/semantic-parser';
 
 function prepareData(parsed) {
   const hero = mappers.extractors.hero(parsed);

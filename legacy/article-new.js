@@ -1,5 +1,5 @@
 /**
- * Article Class - New Implementation using @uniwebcms/semantic-parser
+ * Article Class - New Implementation using @uniweb/semantic-parser
  *
  * This is a drop-in replacement for the legacy Article class that uses
  * the semantic-parser library internally while maintaining the same API.
@@ -185,7 +185,7 @@ export default class Article {
     /**
      * Parse elements using the semantic-parser library
      *
-     * This method uses the @uniwebcms/semantic-parser library internally
+     * This method uses the @uniweb/semantic-parser library internally
      * while maintaining the exact same output format as the legacy implementation.
      */
     parse(doc) {

@@ -263,7 +263,7 @@ const componentData = mappers.extractBySchema(parsed, componentSchema);
 ## Quick Start
 
 ```js
-import { parseContent, mappers } from "@uniwebcms/semantic-parser";
+import { parseContent, mappers } from "@uniweb/semantic-parser";
 
 const parsed = parseContent(doc);
 
@@ -712,7 +712,7 @@ A Text component handles all these cases automatically.
 #### Quick Example
 
 ```jsx
-import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { parseContent, mappers } from '@uniweb/semantic-parser';
 import { H1, P } from './components/Text'; // See docs/text-component-reference.md
 
 const parsed = parseContent(doc);
@@ -736,7 +736,7 @@ Extractors now return paragraph arrays to preserve structure:
 // Renders: <p>First para</p><p>Second para</p>
 
 // If you need a single string, use joinParagraphs
-import { joinParagraphs } from '@uniwebcms/semantic-parser/mappers/helpers';
+import { joinParagraphs } from '@uniweb/semantic-parser/mappers/helpers';
 
 <P text={joinParagraphs(hero.description, '\n\n')} />
 // Renders: <p>First para\n\nSecond para</p>
@@ -755,7 +755,7 @@ import { joinParagraphs } from '@uniwebcms/semantic-parser/mappers/helpers';
 #### Complete Integration Example
 
 ```jsx
-import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { parseContent, mappers } from '@uniweb/semantic-parser';
 import { H1, H2, H3, P } from './components/Text';
 
 function HeroSection({ document }) {
@@ -808,7 +808,7 @@ function FeaturesList({ document }) {
 
 ```javascript
 // ✅ Good - sanitize during data preparation
-import { sanitizeHtml } from '@uniwebcms/semantic-parser/mappers/types';
+import { sanitizeHtml } from '@uniweb/semantic-parser/mappers/types';
 
 function prepareHeroData(parsed) {
   const hero = mappers.extractors.hero(parsed);
@@ -850,7 +850,7 @@ import {
   joinParagraphs,
   excerptFromParagraphs,
   countWords
-} from '@uniwebcms/semantic-parser/mappers/helpers';
+} from '@uniweb/semantic-parser/mappers/helpers';
 
 // Join paragraphs for single-string display
 const singlePara = joinParagraphs(hero.description, ' ');

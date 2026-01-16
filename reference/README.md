@@ -34,7 +34,7 @@ This component assumes content is **already sanitized by your engine**. It does 
 4. **Use in your components:**
    ```jsx
    import Text, { H1, P } from './components/Text';
-   import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+   import { parseContent, mappers } from '@uniweb/semantic-parser';
 
    function MyComponent({ document }) {
      const parsed = parseContent(document);
@@ -95,8 +95,8 @@ export const Div: React.FC<Omit<TextProps, 'as'>>;
 Use the parser's built-in utilities in your engine:
 
 ```javascript
-import { sanitizeHtml } from '@uniwebcms/semantic-parser/mappers/types';
-import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { sanitizeHtml } from '@uniweb/semantic-parser/mappers/types';
+import { parseContent, mappers } from '@uniweb/semantic-parser';
 
 // In your engine (NOT in the component)
 function prepareHeroData(document) {

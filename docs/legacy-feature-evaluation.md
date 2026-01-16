@@ -451,7 +451,7 @@ export default class Article {
         const rendered = this.instantiateData(data);
 
         // Use new parser with legacy options
-        const { parseContent } = require('@uniwebcms/semantic-parser');
+        const { parseContent } = require('@uniweb/semantic-parser');
         const parsed = parseContent(rendered, {
             pretitleLevel: 2,  // Legacy behavior
             parseCodeAsJson: true,

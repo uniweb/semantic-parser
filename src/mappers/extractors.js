@@ -323,7 +323,7 @@ function gallery(parsed, options = {}) {
  * @returns {Object} Legacy format { main, items }
  *
  * @example
- * const { parseContent, mappers } = require('@uniwebcms/semantic-parser');
+ * const { parseContent, mappers } = require('@uniweb/semantic-parser');
  * const parsed = parseContent(doc, { pretitleLevel: 2, parseCodeAsJson: true });
  * const legacy = mappers.extractors.legacy(parsed);
  * // Returns: { main: {...}, items: [...] }

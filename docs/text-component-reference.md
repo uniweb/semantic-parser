@@ -21,7 +21,7 @@ cp reference/Text.js src/components/Text.js
 **4. Use in your components:**
 ```jsx
 import Text, { H1, P } from './components/Text';
-import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { parseContent, mappers } from '@uniweb/semantic-parser';
 
 const parsed = parseContent(doc);
 const hero = mappers.extractors.hero(parsed);
@@ -164,8 +164,8 @@ export const Div = (props) => <Text {...props} as="div" />;
 ### Basic Examples
 
 ```jsx
-import { parseContent } from '@uniwebcms/semantic-parser';
-import { extractors } from '@uniwebcms/semantic-parser/mappers';
+import { parseContent } from '@uniweb/semantic-parser';
+import { extractors } from '@uniweb/semantic-parser/mappers';
 import { H1, P, Text } from './components/Text';
 
 // Parse content
@@ -192,7 +192,7 @@ The parser's extractors now return paragraph arrays by default:
 // Renders: <p>Para 1</p><p>Para 2</p>
 
 // If you need a single string, use joinParagraphs helper
-import { joinParagraphs } from '@uniwebcms/semantic-parser/mappers/helpers';
+import { joinParagraphs } from '@uniweb/semantic-parser/mappers/helpers';
 
 <P text={joinParagraphs(hero.description)} />
 // Renders: <p>Para 1 Para 2</p>
@@ -224,7 +224,7 @@ const title = "Welcome to <mark class='brand'>Our Platform</mark>";
 
 ```javascript
 // In your engine, when sanitizing
-import { sanitizeHtml } from '@uniwebcms/semantic-parser/mappers/types';
+import { sanitizeHtml } from '@uniweb/semantic-parser/mappers/types';
 
 const safeTitleContent = sanitizeHtml(titleContent, {
   allowedTags: ['strong', 'em', 'mark', 'span'],
@@ -249,7 +249,7 @@ The component automatically filters empty content:
 ### With Extractors
 
 ```jsx
-import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { parseContent, mappers } from '@uniweb/semantic-parser';
 const { extractors, helpers } = mappers;
 
 const parsed = parseContent(doc);
@@ -271,7 +271,7 @@ function Card({ data }) {
 ### With Custom Schemas
 
 ```jsx
-import { getByPath, extractBySchema } from '@uniwebcms/semantic-parser/mappers/accessor';
+import { getByPath, extractBySchema } from '@uniweb/semantic-parser/mappers/accessor';
 
 const schema = {
   title: { path: 'groups.main.header.title' },
@@ -333,7 +333,7 @@ mark.brand {
 The parser exports sanitization utilities for use in your engine:
 
 ```javascript
-import { sanitizeHtml, stripMarkup } from '@uniwebcms/semantic-parser/mappers/types';
+import { sanitizeHtml, stripMarkup } from '@uniweb/semantic-parser/mappers/types';
 
 // Sanitize HTML content
 const safe = sanitizeHtml(content, {
