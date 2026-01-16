@@ -28,7 +28,7 @@ describe("processByType", () => {
     // Test getHeadingsByLevel
     const h1s = result.getHeadingsByLevel(1);
     expect(h1s).toHaveLength(1);
-    expect(h1s[0].content).toBe("Platform");
+    expect(h1s[0].text).toBe("Platform");
 
     // Test getElementsByHeadingContext
     const elementsUnderH1 = result.getElementsByHeadingContext(

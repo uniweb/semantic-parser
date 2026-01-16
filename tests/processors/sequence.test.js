@@ -22,12 +22,15 @@ describe("processSequence", () => {
     expect(result[0]).toEqual({
       type: "heading",
       level: 1,
-      content: "Title",
+      text: "Title",
+      children: [],
       attrs: { level: 1 }
     });
     expect(result[1]).toEqual({
       type: "paragraph",
-      content: "Content",
+      text: "Content",
+      children: [],
+      attrs: undefined,
     });
   });
 
@@ -50,7 +53,7 @@ describe("processSequence", () => {
     };
 
     const result = processSequence(doc);
-    expect(result[0].content).toBe("Normal <strong>bold</strong>");
+    expect(result[0].text).toBe("Normal <strong>bold</strong>");
   });
 
   test("processes nested lists", () => {
