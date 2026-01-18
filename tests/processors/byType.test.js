@@ -12,9 +12,9 @@ describe("processByType", () => {
     expect(result.headings[0].level).toBe(3);
     expect(result.headings[1].level).toBe(1);
 
-    // Check images with roles
+    // Check images with roles (role is now in attrs)
     expect(result.images.background).toHaveLength(1);
-    expect(result.images.background[0].role).toBe("background");
+    expect(result.images.background[0].attrs?.role).toBe("background");
 
     // Check metadata
     expect(result.metadata.hasMedia).toBe(true);

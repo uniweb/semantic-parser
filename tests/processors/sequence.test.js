@@ -114,9 +114,11 @@ describe("processSequence", () => {
     const result = processSequence(doc);
     expect(result[0]).toEqual({
       type: "image",
-      src: "test.jpg",
-      alt: "Test",
-      role: "background",
+      attrs: {
+        src: "test.jpg",
+        alt: "Test",
+        role: "background",
+      },
     });
   });
 });

@@ -44,7 +44,8 @@ function processByType(sequence) {
         break;
 
       case "image": {
-        const role = element.role || "content";
+        // Support both attrs.role and top-level role for backwards compatibility
+        const role = element.attrs?.role || element.role || "content";
         if (!collections.images[role]) {
           collections.images[role] = [];
         }

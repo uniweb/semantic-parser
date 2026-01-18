@@ -102,10 +102,10 @@ function createSequenceElement(node, options = {}) {
                 attrs: parseImgBlock(attrs),
             };
         case "image":
-            // Standard ProseMirror image node - spread attrs at top level
+            // Standard ProseMirror image node - wrap attrs like ImageBlock
             return {
                 type: "image",
-                ...attrs,
+                attrs: attrs || {},
             };
         case "Video":
             return {
