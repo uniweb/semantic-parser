@@ -320,9 +320,11 @@ function identifyMainContent(groups) {
 
 function processInlineElements(children, body) {
     children.forEach((item) => {
-        //Handle icons only for now
         if (item.type === "icon") {
             body.icons.push(item.attrs);
+        } else if (item.type === "link") {
+            // Handle inline links extracted from paragraph text nodes
+            body.links.push(item.attrs);
         }
     });
 }

@@ -302,6 +302,18 @@ function processInlineElements(content) {
             });
         } else if (item.type === "math-inline") {
             items.push(item);
+        } else if (item.type === "text" && item.marks) {
+            // Extract links from text nodes with link marks
+            const linkMark = item.marks.find((m) => m.type === "link");
+            if (linkMark) {
+                items.push({
+                    type: "link",
+                    attrs: {
+                        href: linkMark.attrs?.href,
+                        label: item.text || "",
+                    },
+                });
+            }
         }
     }
 
