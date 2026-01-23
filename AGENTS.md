@@ -61,17 +61,42 @@ The parser returns a flat content structure:
   title: '',       // Main heading
   pretitle: '',    // Heading before main title
   subtitle: '',    // Heading after main title
+  subtitle2: '',   // Third heading level
   paragraphs: [],
-  links: [],
+  links: [],       // All link-like entities (including buttons, documents)
   imgs: [],
   icons: [],
   videos: [],
   lists: [],
-  buttons: [],
-  data: {},        // Tagged code blocks (keyed by tag name)
-  cards: [],
-  headings: [],
-  items: [],       // Child content groups
+  quotes: [],
+  data: {},        // Structured data (tagged code blocks, forms, cards)
+  headings: [],    // Overflow headings after title/subtitle/subtitle2
+  items: [],       // Child content groups (same structure recursively)
+}
+```
+
+### Link Roles
+
+Links include buttons and documents, distinguished by `role`:
+
+```js
+links: [
+  { href: "/page", label: "Learn More", role: "link" },
+  { href: "/action", label: "Get Started", role: "button", variant: "primary" },
+  { href: "/file.pdf", label: "Download", role: "document", download: true },
+]
+```
+
+### Structured Data
+
+The `data` object holds all structured content:
+
+```js
+data: {
+  "nav-links": [...],     // From ```json:nav-links or ```yaml:nav-links
+  "config": {...},        // From ```yaml:config
+  "form": {...},          // From FormBlock editor widget
+  "cards": [...]          // From card-group editor widget (with schema field)
 }
 ```
 
@@ -88,10 +113,18 @@ The sequence processor identifies several special element types by inspecting pa
 - **Links**: Paragraphs containing only a single link mark
 - **Images**: Paragraphs with single image (role: 'image' or 'banner')
 - **Icons**: Paragraphs with single image (role: 'icon')
-- **Buttons**: Paragraphs with single text node having button mark
+- **Buttons**: Editor `button` nodes → mapped to links with `role: "button"`
 - **Videos**: Paragraphs with single image (role: 'video')
 
-These are extracted into dedicated element types for easier downstream processing.
+### Editor Node Mappings
+
+Editor-specific nodes are mapped to standard entities:
+- `button` node → `links[]` with `role: "button"` and `variant` attribute
+- `FormBlock` → `data.form`
+- `card-group` → `data.cards` with `schema` field indicating card type
+- `document-group` → `links[]` with `role: "document"` and `download: true`
+
+See `docs/entity-consolidation.md` for complete mapping documentation.
 
 ### Tagged Code Blocks
 

@@ -64,19 +64,22 @@ Main content fields are at the top level. The `items` array contains additional 
 
 ```js
 result = {
-  // Main content fields
+  // Header fields (from headings)
   pretitle: "",             // Heading before main title
   title: "Welcome",         // Main heading
   subtitle: "",             // Heading after main title
+  subtitle2: "",            // Third heading level
+
+  // Body fields
   paragraphs: ["Get started today."],
+  links: [],                // All links (including buttons, documents)
   imgs: [],
   videos: [],
-  links: [],
-  lists: [],
   icons: [],
-  buttons: [],
-  banner: null,             // Optional banner image
-  // ... more content types
+  lists: [],
+  quotes: [],
+  data: {},                 // Structured data (tagged code blocks, forms, cards)
+  headings: [],             // Overflow headings after title/subtitle/subtitle2
 
   // Additional content groups (from headings after content)
   items: [

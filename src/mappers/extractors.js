@@ -16,6 +16,10 @@ import { first, joinParagraphs } from "./helpers.js";
  * @returns {Object} Hero component data
  */
 function hero(parsed) {
+    const links = parsed?.links || [];
+    const buttonLink = links.find(l => l.role?.startsWith('button'));
+    const plainLink = links.find(l => !l.role?.startsWith('button'));
+
     return {
         title: parsed?.title || null,
         subtitle: parsed?.subtitle || null,
@@ -24,8 +28,7 @@ function hero(parsed) {
         image: first(parsed?.imgs)?.url || null,
         imageAlt: first(parsed?.imgs)?.alt || null,
         banner: null, // Banner detection would need to be added separately
-        cta: first(parsed?.links) || null,
-        button: first(parsed?.buttons) || null,
+        cta: buttonLink || plainLink || null,
     };
 }
 
@@ -45,6 +48,10 @@ function card(parsed, options = {}) {
     const extractCard = (content) => {
         if (!content) return null;
 
+        const links = content.links || [];
+        const buttonLink = links.find(l => l.role?.startsWith('button'));
+        const plainLink = links.find(l => !l.role?.startsWith('button'));
+
         return {
             title: content.title || null,
             subtitle: content.subtitle || null,
@@ -52,8 +59,8 @@ function card(parsed, options = {}) {
             image: first(content.imgs)?.url || null,
             imageAlt: first(content.imgs)?.alt || null,
             icon: first(content.icons) || null,
-            link: first(content.links) || null,
-            button: first(content.buttons) || null,
+            link: plainLink || null,
+            cta: buttonLink || plainLink || null,
         };
     };
 
@@ -230,6 +237,8 @@ function pricing(parsed) {
     return items
         .map((item) => {
             const firstList = first(item.lists);
+            const links = item.links || [];
+            const buttonLink = links.find(l => l.role?.startsWith('button'));
 
             return {
                 name: item.title || null,
@@ -242,7 +251,7 @@ function pricing(parsed) {
                           )
                           .filter(Boolean)
                     : [],
-                cta: first(item.links) || first(item.buttons) || null,
+                cta: buttonLink || first(links) || null,
                 highlighted:
                     item.pretitle?.toLowerCase().includes("popular") || false,
             };
@@ -314,6 +323,9 @@ function gallery(parsed, options = {}) {
  * used by the legacy Article class, enabling drop-in replacement without
  * breaking existing components.
  *
+ * NOTE: Reconstructs deprecated fields (buttons, cards, documents, forms, alignment)
+ * from the new consolidated structure for backwards compatibility.
+ *
  * @param {Object} parsed - Parsed content from parseContent() (flat structure)
  * @returns {Object} Legacy format { main, items } with nested header/body structure
  *
@@ -334,6 +346,20 @@ function legacy(parsed) {
 
         if (!banner) banner = imgs[0];
 
+        // Reconstruct deprecated fields from new structure
+        const links = content.links || [];
+        const buttons = links
+            .filter(l => l.role?.startsWith('button'))
+            .map(l => ({ attrs: l, content: l.label }));
+        const documents = links
+            .filter(l => l.role === 'document')
+            .map(l => ({ title: l.label, href: l.href, coverImg: l.preview }));
+        const plainLinks = links.filter(l => !l.role?.startsWith('button') && l.role !== 'document');
+
+        const cards = content.data?.cards || [];
+        const form = content.data?.form || null;
+        const forms = form ? [form] : [];
+
         return {
             header: {
                 title: content.title || "",
@@ -345,7 +371,7 @@ function legacy(parsed) {
                     content.subtitle2 ||
                     first(content.paragraphs) ||
                     "",
-                alignment: content.alignment || "",
+                alignment: "", // Deprecated: always empty
             },
             banner,
             body: {
@@ -354,16 +380,16 @@ function legacy(parsed) {
                 imgs,
                 videos: content.videos || [],
                 lists: content.lists || [],
-                links: content.links || [],
+                links: plainLinks,
                 icons: content.icons || [],
-                buttons: content.buttons || [],
-                cards: content.cards || [],
-                documents: content.documents || [],
-                forms: content.forms || [],
-                form: first(content.forms) || null,
+                buttons,
+                cards,
+                documents,
+                forms,
+                form,
                 quotes: content.quotes || [],
-                properties: content.properties || {},
-                propertyBlocks: content.propertyBlocks || [],
+                properties: content.data || {},
+                propertyBlocks: [],
             },
         };
     };

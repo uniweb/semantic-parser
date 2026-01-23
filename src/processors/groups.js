@@ -10,18 +10,13 @@ function flattenGroup(group) {
         pretitle: group.header.pretitle || '',
         subtitle: group.header.subtitle || '',
         subtitle2: group.header.subtitle2 || '',
-        alignment: group.header.alignment || null,
         paragraphs: group.body.paragraphs || [],
         links: group.body.links || [],
         imgs: group.body.imgs || [],
         icons: group.body.icons || [],
         lists: group.body.lists || [],
         videos: group.body.videos || [],
-        buttons: group.body.buttons || [],
         data: group.body.data || {},
-        cards: group.body.cards || [],
-        documents: group.body.documents || [],
-        forms: group.body.forms || [],
         quotes: group.body.quotes || [],
         headings: group.body.headings || [],
     };
@@ -41,18 +36,13 @@ function processGroups(sequence, options = {}) {
             pretitle: '',
             subtitle: '',
             subtitle2: '',
-            alignment: null,
             paragraphs: [],
             links: [],
             imgs: [],
             icons: [],
             lists: [],
             videos: [],
-            buttons: [],
             data: {},
-            cards: [],
-            documents: [],
-            forms: [],
             quotes: [],
             headings: [],
             items: [],
@@ -82,18 +72,13 @@ function processGroups(sequence, options = {}) {
         pretitle: '',
         subtitle: '',
         subtitle2: '',
-        alignment: null,
         paragraphs: [],
         links: [],
         imgs: [],
         icons: [],
         lists: [],
         videos: [],
-        buttons: [],
         data: {},
-        cards: [],
-        documents: [],
-        forms: [],
         quotes: [],
         headings: [],
     };
@@ -225,7 +210,6 @@ function processGroupContent(elements) {
         title: "",
         subtitle: "",
         subtitle2: "",
-        alignment: null,
     };
 
     const body = {
@@ -235,11 +219,7 @@ function processGroupContent(elements) {
         paragraphs: [],
         links: [],
         lists: [],
-        buttons: [],
         data: {},
-        cards: [],
-        documents: [],
-        forms: [],
         quotes: [],
         headings: [],
     };
@@ -272,10 +252,6 @@ function processGroupContent(elements) {
             //We shuold set the group level to the highest one instead of the first one.
             metadata.level ??= element.level;
 
-            // Extract alignment from first heading
-            if (!header.alignment && element.attrs?.textAlign) {
-                header.alignment = element.attrs.textAlign;
-            }
             // h3 h2 h1 h1
             // Assign to header fields
             // h3 h2 h3 h4
@@ -329,9 +305,16 @@ function processGroupContent(elements) {
                     break;
 
                 case "button":
-                    body.buttons.push({
-                        attrs: element.attrs,
-                        content: element.text,
+                    // Map button to link with role
+                    body.links.push({
+                        href: element.attrs?.href || '',
+                        label: element.text || '',
+                        role: element.attrs?.variant ? `button-${element.attrs.variant}` : 'button',
+                        variant: element.attrs?.variant || 'primary',
+                        size: element.attrs?.size,
+                        icon: element.attrs?.icon,
+                        target: element.attrs?.target,
+                        class: element.attrs?.class,
                     });
                     break;
 
@@ -356,15 +339,33 @@ function processGroupContent(elements) {
                     break;
 
                 case "form":
-                    body.forms.push(element.data || element.attrs);
+                    // Map FormBlock to data.form
+                    body.data.form = element.data || element.attrs;
                     break;
 
                 case "card-group":
-                    body.cards.push(...element.cards);
+                    // Map cards to data.cards with schema field
+                    if (!body.data.cards) body.data.cards = [];
+                    body.data.cards.push(
+                        ...element.cards.map(card => ({
+                            schema: card.cardType || 'generic',
+                            ...card,
+                        }))
+                    );
                     break;
 
                 case "document-group":
-                    body.documents.push(...element.documents);
+                    // Map documents to links with role=document
+                    element.documents.forEach(doc => {
+                        body.links.push({
+                            href: doc.href || doc.downloadUrl || '',
+                            label: doc.title || '',
+                            role: 'document',
+                            download: true,
+                            preview: doc.coverImg,
+                            fileType: doc.fileType,
+                        });
+                    });
                     break;
             }
         }
