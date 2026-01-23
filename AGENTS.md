@@ -93,9 +93,9 @@ The `data` object holds all structured content:
 
 ```js
 data: {
-  "nav-links": [...],     // From ```json:nav-links or ```yaml:nav-links
+  "nav-links": [...],     // From ```yaml:nav-links
   "config": {...},        // From ```yaml:config
-  "form": {...},          // From FormBlock editor widget
+  "form": {...},          // From FormBlock editor widget or ```yaml:form
   "person": [...],        // From card-group with cardType="person"
   "event": [...]          // From card-group with cardType="event"
 }
@@ -132,8 +132,11 @@ See `docs/entity-consolidation.md` for complete mapping documentation.
 Code blocks with tags route parsed data to the `data` object:
 
 ```markdown
-```json:nav-links
-[{ "label": "Home", "href": "/" }]
+```yaml:nav-links
+- label: Home
+  href: /
+- label: About
+  href: /about
 ```
 
 ```yaml:config
@@ -141,6 +144,8 @@ title: My Site
 theme: dark
 ```
 ```
+
+JSON is also supported (`json:tag-name`) if you prefer.
 
 Results in:
 ```js

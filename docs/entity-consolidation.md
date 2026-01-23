@@ -154,10 +154,13 @@ fields:
 submitLabel: Subscribe
 ```
 
-```json:nav-links
-[{ "label": "Home", "href": "/" }]
+```yaml:nav-links
+- label: Home
+  href: /
 ```
 ```
+
+JSON is also supported (`json:tag-name`) if you prefer.
 
 ---
 
