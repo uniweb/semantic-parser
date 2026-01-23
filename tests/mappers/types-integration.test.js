@@ -49,7 +49,7 @@ describe("Type System Integration", () => {
     test("strips markup automatically for plaintext fields", () => {
       const schema = {
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext"
         }
       };
@@ -64,7 +64,7 @@ describe("Type System Integration", () => {
     test("truncates text automatically with maxLength", () => {
       const schema = {
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 20
         }
@@ -78,7 +78,7 @@ describe("Type System Integration", () => {
     test("creates excerpts from paragraphs", () => {
       const schema = {
         excerpt: {
-          path: "groups.main.body.paragraphs",
+          path: "paragraphs",
           type: "excerpt",
           maxLength: 50
         }
@@ -93,7 +93,7 @@ describe("Type System Integration", () => {
     test("preserves richtext formatting", () => {
       const schema = {
         description: {
-          path: "groups.main.body.paragraphs[0]",
+          path: "paragraphs[0]",
           type: "richtext"
         }
       };
@@ -109,16 +109,12 @@ describe("Type System Integration", () => {
 
     test("handles empty strings with treatEmptyAsDefault", () => {
       const testParsed = {
-        groups: {
-          main: {
-            header: { subtitle: "" }
-          }
-        }
+        subtitle: ""
       };
 
       const schema = {
         subtitle: {
-          path: "groups.main.header.subtitle",
+          path: "subtitle",
           type: "plaintext",
           defaultValue: "No subtitle",
           treatEmptyAsDefault: true
@@ -133,21 +129,21 @@ describe("Type System Integration", () => {
     test("combines multiple types in one schema", () => {
       const schema = {
         kicker: {
-          path: "groups.main.header.pretitle",
+          path: "pretitle",
           type: "plaintext",
           transform: (text) => text.toUpperCase()
         },
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 30
         },
         subtitle: {
-          path: "groups.main.header.subtitle",
+          path: "subtitle",
           type: "plaintext"
         },
         excerpt: {
-          path: "groups.main.body.paragraphs",
+          path: "paragraphs",
           type: "excerpt",
           maxLength: 100
         }
@@ -168,7 +164,7 @@ describe("Type System Integration", () => {
 
       const schema = {
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 10  // Intentionally too short
         }
@@ -186,7 +182,7 @@ describe("Type System Integration", () => {
     test("still applies transformations in build mode", () => {
       const schema = {
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 20
         }
@@ -203,12 +199,12 @@ describe("Type System Integration", () => {
     test("returns validation results without extracting", () => {
       const schema = {
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 10
         },
         missingField: {
-          path: "groups.main.missing",
+          path: "missingField",
           type: "plaintext",
           required: true
         }
@@ -225,7 +221,7 @@ describe("Type System Integration", () => {
     test("provides field-level hints for UI", () => {
       const schema = {
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 15
         }
@@ -246,22 +242,22 @@ describe("Type System Integration", () => {
     test("Hero component schema", () => {
       const heroSchema = {
         brand: {
-          path: "groups.main.header.pretitle",
+          path: "pretitle",
           type: "plaintext",
           maxLength: 20
         },
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 60
         },
         subtitle: {
-          path: "groups.main.header.subtitle",
+          path: "subtitle",
           type: "plaintext",
           maxLength: 100
         },
         description: {
-          path: "groups.main.body.paragraphs",
+          path: "paragraphs",
           type: "excerpt",
           maxLength: 200
         }
@@ -278,12 +274,12 @@ describe("Type System Integration", () => {
     test("Card component schema", () => {
       const cardSchema = {
         title: {
-          path: "groups.main.header.title",
+          path: "title",
           type: "plaintext",
           maxLength: 50
         },
         text: {
-          path: "groups.main.body.paragraphs",
+          path: "paragraphs",
           type: "excerpt",
           maxLength: 120
         }

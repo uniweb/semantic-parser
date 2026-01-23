@@ -1,5 +1,9 @@
 /**
  * Pre-built extractors for common component patterns
+ *
+ * All extractors work with the flat content structure:
+ * - Root level: title, pretitle, subtitle, paragraphs, links, imgs, items, etc.
+ * - Items array: each item has flat structure (title, paragraphs, etc.)
  */
 
 import { first, joinParagraphs } from "./helpers.js";
@@ -12,18 +16,16 @@ import { first, joinParagraphs } from "./helpers.js";
  * @returns {Object} Hero component data
  */
 function hero(parsed) {
-    const main = parsed.groups?.main;
-
     return {
-        title: main?.header?.title || null,
-        subtitle: main?.header?.subtitle || null,
-        kicker: main?.header?.pretitle || null,
-        description: main?.body?.paragraphs || [],
-        image: first(main?.body?.imgs)?.url || null,
-        imageAlt: first(main?.body?.imgs)?.alt || null,
-        banner: main?.banner?.url || null,
-        cta: first(main?.body?.links) || null,
-        button: first(main?.body?.buttons) || null,
+        title: parsed?.title || null,
+        subtitle: parsed?.subtitle || null,
+        kicker: parsed?.pretitle || null,
+        description: parsed?.paragraphs || [],
+        image: first(parsed?.imgs)?.url || null,
+        imageAlt: first(parsed?.imgs)?.alt || null,
+        banner: null, // Banner detection would need to be added separately
+        cta: first(parsed?.links) || null,
+        button: first(parsed?.buttons) || null,
     };
 }
 
@@ -40,30 +42,30 @@ function hero(parsed) {
 function card(parsed, options = {}) {
     const { useItems = false, itemIndex } = options;
 
-    const extractCard = (group) => {
-        if (!group) return null;
+    const extractCard = (content) => {
+        if (!content) return null;
 
         return {
-            title: group.header?.title || null,
-            subtitle: group.header?.subtitle || null,
-            description: group.body?.paragraphs || [],
-            image: first(group.body?.imgs)?.url || null,
-            imageAlt: first(group.body?.imgs)?.alt || null,
-            icon: first(group.body?.icons) || null,
-            link: first(group.body?.links) || null,
-            button: first(group.body?.buttons) || null,
+            title: content.title || null,
+            subtitle: content.subtitle || null,
+            description: content.paragraphs || [],
+            image: first(content.imgs)?.url || null,
+            imageAlt: first(content.imgs)?.alt || null,
+            icon: first(content.icons) || null,
+            link: first(content.links) || null,
+            button: first(content.buttons) || null,
         };
     };
 
     if (useItems) {
-        const items = parsed.groups?.items || [];
+        const items = parsed?.items || [];
         if (itemIndex !== undefined) {
             return extractCard(items[itemIndex]);
         }
         return items.map(extractCard).filter(Boolean);
     }
 
-    return extractCard(parsed.groups?.main);
+    return extractCard(parsed);
 }
 
 /**
@@ -74,19 +76,17 @@ function card(parsed, options = {}) {
  * @returns {Object} Article data
  */
 function article(parsed) {
-    const main = parsed.groups?.main;
-
     return {
-        title: main?.header?.title || null,
-        subtitle: main?.header?.subtitle || null,
-        kicker: main?.header?.pretitle || null,
-        author: main?.metadata?.author || null,
-        date: main?.metadata?.date || null,
-        banner: main?.banner?.url || null,
-        content: main?.body?.paragraphs || [],
-        images: main?.body?.imgs || [],
-        videos: main?.body?.videos || [],
-        links: main?.body?.links || [],
+        title: parsed?.title || null,
+        subtitle: parsed?.subtitle || null,
+        kicker: parsed?.pretitle || null,
+        author: null, // Would need metadata support
+        date: null,   // Would need metadata support
+        banner: null, // Banner detection would need to be added separately
+        content: parsed?.paragraphs || [],
+        images: parsed?.imgs || [],
+        videos: parsed?.videos || [],
+        links: parsed?.links || [],
     };
 }
 
@@ -98,14 +98,13 @@ function article(parsed) {
  * @returns {Array} Array of stat objects
  */
 function stats(parsed) {
-    const items = parsed.groups?.items || [];
+    const items = parsed?.items || [];
 
     return items
         .map((item) => ({
-            value: item.header?.title || null,
-            label:
-                item.header?.subtitle || first(item.body?.paragraphs) || null,
-            description: item.body?.paragraphs || [],
+            value: item.title || null,
+            label: item.subtitle || first(item.paragraphs) || null,
+            description: item.paragraphs || [],
         }))
         .filter((stat) => stat.value);
 }
@@ -118,17 +117,17 @@ function stats(parsed) {
  * @returns {Array} Navigation items
  */
 function navigation(parsed) {
-    const items = parsed.groups?.items || [];
+    const items = parsed?.items || [];
 
     return items
         .map((item) => {
             const navItem = {
-                label: item.header?.title || null,
-                href: first(item.body?.links)?.href || null,
+                label: item.title || null,
+                href: first(item.links)?.href || null,
             };
 
             // Extract children from nested lists
-            const firstList = first(item.body?.lists);
+            const firstList = first(item.lists);
             if (firstList && firstList.length > 0) {
                 navItem.children = firstList
                     .map((listItem) => ({
@@ -152,16 +151,16 @@ function navigation(parsed) {
  * @returns {Array} Feature items
  */
 function features(parsed) {
-    const items = parsed.groups?.items || [];
+    const items = parsed?.items || [];
 
     return items
         .map((item) => ({
-            title: item.header?.title || null,
-            subtitle: item.header?.subtitle || null,
-            description: item.body?.paragraphs || [],
-            icon: first(item.body?.icons) || null,
-            image: first(item.body?.imgs)?.url || null,
-            link: first(item.body?.links) || null,
+            title: item.title || null,
+            subtitle: item.subtitle || null,
+            description: item.paragraphs || [],
+            icon: first(item.icons) || null,
+            image: first(item.imgs)?.url || null,
+            link: first(item.links) || null,
         }))
         .filter((feature) => feature.title);
 }
@@ -178,25 +177,25 @@ function features(parsed) {
 function testimonial(parsed, options = {}) {
     const { useItems = false } = options;
 
-    const extractTestimonial = (group) => {
-        if (!group) return null;
+    const extractTestimonial = (content) => {
+        if (!content) return null;
 
         return {
-            quote: group.body?.paragraphs || [],
-            author: group.header?.title || null,
-            role: group.header?.subtitle || null,
-            company: group.header?.pretitle || null,
-            image: first(group.body?.imgs)?.url || null,
-            imageAlt: first(group.body?.imgs)?.alt || null,
+            quote: content.paragraphs || [],
+            author: content.title || null,
+            role: content.subtitle || null,
+            company: content.pretitle || null,
+            image: first(content.imgs)?.url || null,
+            imageAlt: first(content.imgs)?.alt || null,
         };
     };
 
     if (useItems) {
-        const items = parsed.groups?.items || [];
+        const items = parsed?.items || [];
         return items.map(extractTestimonial).filter(Boolean);
     }
 
-    return extractTestimonial(parsed.groups?.main);
+    return extractTestimonial(parsed);
 }
 
 /**
@@ -207,13 +206,13 @@ function testimonial(parsed, options = {}) {
  * @returns {Array} FAQ items
  */
 function faq(parsed) {
-    const items = parsed.groups?.items || [];
+    const items = parsed?.items || [];
 
     return items
         .map((item) => ({
-            question: item.header?.title || null,
-            answer: item.body?.paragraphs || [],
-            links: item.body?.links || [],
+            question: item.title || null,
+            answer: item.paragraphs || [],
+            links: item.links || [],
         }))
         .filter((item) => item.question);
 }
@@ -226,16 +225,16 @@ function faq(parsed) {
  * @returns {Array} Pricing tiers
  */
 function pricing(parsed) {
-    const items = parsed.groups?.items || [];
+    const items = parsed?.items || [];
 
     return items
         .map((item) => {
-            const firstList = first(item.body?.lists);
+            const firstList = first(item.lists);
 
             return {
-                name: item.header?.title || null,
-                price: item.header?.subtitle || null,
-                description: first(item.body?.paragraphs) || null,
+                name: item.title || null,
+                price: item.subtitle || null,
+                description: first(item.paragraphs) || null,
                 features: firstList
                     ? firstList
                           .map((listItem) =>
@@ -243,13 +242,9 @@ function pricing(parsed) {
                           )
                           .filter(Boolean)
                     : [],
-                cta:
-                    first(item.body?.links) ||
-                    first(item.body?.buttons) ||
-                    null,
+                cta: first(item.links) || first(item.buttons) || null,
                 highlighted:
-                    item.header?.pretitle?.toLowerCase().includes("popular") ||
-                    false,
+                    item.pretitle?.toLowerCase().includes("popular") || false,
             };
         })
         .filter((tier) => tier.name);
@@ -263,17 +258,17 @@ function pricing(parsed) {
  * @returns {Array} Team members
  */
 function team(parsed) {
-    const items = parsed.groups?.items || [];
+    const items = parsed?.items || [];
 
     return items
         .map((item) => ({
-            name: item.header?.title || null,
-            role: item.header?.subtitle || null,
-            department: item.header?.pretitle || null,
-            bio: item.body?.paragraphs || [],
-            image: first(item.body?.imgs)?.url || null,
-            imageAlt: first(item.body?.imgs)?.alt || null,
-            links: item.body?.links || [],
+            name: item.title || null,
+            role: item.subtitle || null,
+            department: item.pretitle || null,
+            bio: item.paragraphs || [],
+            image: first(item.imgs)?.url || null,
+            imageAlt: first(item.imgs)?.alt || null,
+            links: item.links || [],
         }))
         .filter((member) => member.name);
 }
@@ -292,14 +287,14 @@ function gallery(parsed, options = {}) {
     const images = [];
 
     if (source === "main" || source === "all") {
-        const mainImages = parsed.groups?.main?.body?.imgs || [];
+        const mainImages = parsed?.imgs || [];
         images.push(...mainImages);
     }
 
     if (source === "items" || source === "all") {
-        const items = parsed.groups?.items || [];
+        const items = parsed?.items || [];
         items.forEach((item) => {
-            const itemImages = item.body?.imgs || [];
+            const itemImages = item.imgs || [];
             images.push(...itemImages);
         });
     }
@@ -315,26 +310,24 @@ function gallery(parsed, options = {}) {
  * Extract content in legacy Article class format
  * Used for backward compatibility with existing components
  *
- * This extractor transforms the new parser output into the exact format
+ * This extractor transforms the new flat parser output into the nested format
  * used by the legacy Article class, enabling drop-in replacement without
  * breaking existing components.
  *
- * @param {Object} parsed - Parsed content from parseContent()
- * @returns {Object} Legacy format { main, items }
+ * @param {Object} parsed - Parsed content from parseContent() (flat structure)
+ * @returns {Object} Legacy format { main, items } with nested header/body structure
  *
  * @example
  * const { parseContent, mappers } = require('@uniweb/semantic-parser');
- * const parsed = parseContent(doc, { pretitleLevel: 2, parseCodeAsJson: true });
+ * const parsed = parseContent(doc);
  * const legacy = mappers.extractors.legacy(parsed);
- * // Returns: { main: {...}, items: [...] }
+ * // Returns: { main: { header: {...}, body: {...} }, items: [...] }
  */
 function legacy(parsed) {
-    const groups = parsed.groups || {};
+    const transformToNested = (content) => {
+        if (!content) return null;
 
-    const transformGroup = (group) => {
-        if (!group) return null;
-
-        let imgs = group.body?.imgs || [];
+        let imgs = content.imgs || [];
         let banner = imgs.filter((item) => {
             return (item.role = "banner");
         })?.[0];
@@ -343,41 +336,41 @@ function legacy(parsed) {
 
         return {
             header: {
-                title: group.header?.title || "",
-                subtitle: group.header?.subtitle || "",
-                subtitle2: group.header?.subtitle2 || "",
-                pretitle: group.header?.pretitle || "",
+                title: content.title || "",
+                subtitle: content.subtitle || "",
+                subtitle2: content.subtitle2 || "",
+                pretitle: content.pretitle || "",
                 // Auto-fill description (legacy behavior)
                 description:
-                    group.header?.subtitle2 ||
-                    first(group.body?.paragraphs) ||
+                    content.subtitle2 ||
+                    first(content.paragraphs) ||
                     "",
-                alignment: group.header?.alignment || "",
+                alignment: content.alignment || "",
             },
             banner,
             body: {
-                paragraphs: group.body?.paragraphs || [],
-                headings: group.body?.headings || [],
+                paragraphs: content.paragraphs || [],
+                headings: content.headings || [],
                 imgs,
-                videos: group.body?.videos || [],
-                lists: group.body?.lists || [],
-                links: group.body?.links || [],
-                icons: group.body?.icons || [],
-                buttons: group.body?.buttons || [],
-                cards: group.body?.cards || [],
-                documents: group.body?.documents || [],
-                forms: group.body?.forms || [],
-                form: first(group.body?.forms) || null,
-                quotes: group.body?.quotes || [],
-                properties: group.body?.properties || {},
-                propertyBlocks: group.body?.propertyBlocks || [],
+                videos: content.videos || [],
+                lists: content.lists || [],
+                links: content.links || [],
+                icons: content.icons || [],
+                buttons: content.buttons || [],
+                cards: content.cards || [],
+                documents: content.documents || [],
+                forms: content.forms || [],
+                form: first(content.forms) || null,
+                quotes: content.quotes || [],
+                properties: content.properties || {},
+                propertyBlocks: content.propertyBlocks || [],
             },
         };
     };
 
     return {
-        main: transformGroup(groups.main),
-        items: (groups.items || []).map(transformGroup),
+        main: transformToNested(parsed),
+        items: (parsed?.items || []).map(transformToNested),
     };
 }
 

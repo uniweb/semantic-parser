@@ -1,6 +1,5 @@
 import { processSequence } from "./processors/sequence.js";
 import { processGroups } from "./processors/groups.js";
-import { processByType } from "./processors/byType.js";
 import * as mappers from "./mappers/index.js";
 
 /**
@@ -8,7 +7,7 @@ import * as mappers from "./mappers/index.js";
  * @param {Object} doc - ProseMirror document
  * @param {Object} options - Parsing options
  * @param {boolean} options.parseCodeAsJson - Parse code blocks as JSON. Default: false
- * @returns {Object} Parsed content structure
+ * @returns {Object} Flat content structure with sequence for ordered access
  */
 function parseContent(doc, options = {}) {
     // Default options
@@ -17,18 +16,17 @@ function parseContent(doc, options = {}) {
         ...options,
     };
 
-    // Process content in different ways
+    // Process sequence (ordered elements)
     const sequence = processSequence(doc, opts);
 
+    // Process groups (semantic structure) - returns flat object
     const groups = processGroups(sequence, opts);
 
-    const byType = processByType(sequence);
-
+    // Return flat structure with sequence at top level
     return {
         raw: doc,
         sequence,
-        groups,
-        byType,
+        ...groups,  // Spread flat content: title, paragraphs, items, etc.
     };
 }
 

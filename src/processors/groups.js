@@ -1,42 +1,113 @@
 /**
+ * Flatten a group's nested structure to a flat object
+ * @param {Object} group Processed group with { header, body, metadata }
+ * @returns {Object} Flat content object
+ */
+function flattenGroup(group) {
+    if (!group) return null;
+    return {
+        title: group.header.title || '',
+        pretitle: group.header.pretitle || '',
+        subtitle: group.header.subtitle || '',
+        subtitle2: group.header.subtitle2 || '',
+        alignment: group.header.alignment || null,
+        paragraphs: group.body.paragraphs || [],
+        links: group.body.links || [],
+        imgs: group.body.imgs || [],
+        icons: group.body.icons || [],
+        lists: group.body.lists || [],
+        videos: group.body.videos || [],
+        buttons: group.body.buttons || [],
+        properties: group.body.properties || {},
+        propertyBlocks: group.body.propertyBlocks || [],
+        cards: group.body.cards || [],
+        documents: group.body.documents || [],
+        forms: group.body.forms || [],
+        quotes: group.body.quotes || [],
+        headings: group.body.headings || [],
+    };
+}
+
+/**
  * Transform a sequence into content groups with semantic structure
  * @param {Array} sequence Flat sequence of elements
  * @param {Object} options Parsing options
- * @returns {Object} Content organized into groups with identified main content
+ * @returns {Object} Flat content object with items array
  */
 function processGroups(sequence, options = {}) {
-    const result = {
-        main: null,
-        items: [],
-        metadata: {
-            dividerMode: false,
-            groups: 0,
-        },
-    };
-
-    if (!sequence.length) return result;
+    // Empty content returns flat empty structure
+    if (!sequence.length) {
+        return {
+            title: '',
+            pretitle: '',
+            subtitle: '',
+            subtitle2: '',
+            alignment: null,
+            paragraphs: [],
+            links: [],
+            imgs: [],
+            icons: [],
+            lists: [],
+            videos: [],
+            buttons: [],
+            properties: {},
+            propertyBlocks: [],
+            cards: [],
+            documents: [],
+            forms: [],
+            quotes: [],
+            headings: [],
+            items: [],
+        };
+    }
 
     const groups = splitBySlices(sequence);
 
-    // Process each group's structure
+    // Process each group's structure (still nested internally)
     const processedGroups = groups.map((group) => processGroupContent(group));
 
-    // Special handling for first group in divider mode
-    if (result.metadata.dividerMode && groups.startsWithDivider) {
-        result.items = processedGroups;
+    // Determine main vs items
+    let mainGroup = null;
+    let itemGroups = [];
+
+    const shouldBeMain = identifyMainContent(processedGroups);
+    if (shouldBeMain) {
+        mainGroup = processedGroups[0];
+        itemGroups = processedGroups.slice(1);
     } else {
-        // Organize into main content and items
-        const shouldBeMain = identifyMainContent(processedGroups);
-        if (shouldBeMain) {
-            result.main = processedGroups[0];
-            result.items = processedGroups.slice(1);
-        } else {
-            result.items = processedGroups;
-        }
+        itemGroups = processedGroups;
     }
 
-    // result.metadata.groups = processedGroups.length;
-    return result;
+    // Flatten main content (or return empty flat structure)
+    const flatMain = flattenGroup(mainGroup) || {
+        title: '',
+        pretitle: '',
+        subtitle: '',
+        subtitle2: '',
+        alignment: null,
+        paragraphs: [],
+        links: [],
+        imgs: [],
+        icons: [],
+        lists: [],
+        videos: [],
+        buttons: [],
+        properties: {},
+        propertyBlocks: [],
+        cards: [],
+        documents: [],
+        forms: [],
+        quotes: [],
+        headings: [],
+    };
+
+    // Flatten items
+    const flatItems = itemGroups.map(flattenGroup);
+
+    return {
+        ...flatMain,
+        items: flatItems,
+    };
 }
 
 function splitBySlices(sequence) {

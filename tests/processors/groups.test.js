@@ -17,42 +17,41 @@ describe("processGroups", () => {
         const sequence = processSequence(dividerGroups);
         const result = processGroups(sequence);
 
-        // expect(result.metadata.dividerMode).toBe(true);
-        expect(result.main).toBeTruthy();
+        // First group becomes main (flat at root)
+        expect(result.title).toBeTruthy();
         expect(result.items).toHaveLength(2);
-        // expect(result.metadata.groups).toBe(3);
     });
 
     test("handles heading-based groups", () => {
         const sequence = processSequence(headingGroups);
         const result = processGroups(sequence);
 
-        expect(result.metadata.dividerMode).toBe(false);
-        expect(result.main).toBeTruthy();
-        expect(result.main.header.title).toBe("Features");
+        // Main content is now flat at root level
+        expect(result.title).toBe("Features");
         expect(result.items).toHaveLength(2);
-        expect(result.items[0].header.title).toBe("Feature One");
+        expect(result.items[0].title).toBe("Feature One");
     });
 
     test("correctly processes nested headings", () => {
         const sequence = processSequence(nestedHeadings);
         const result = processGroups(sequence);
 
-        expect(result.main).toBeTruthy();
-        expect(result.main.header.pretitle).toBe("WELCOME");
-        expect(result.main.header.title).toBe("Main Title");
-        expect(result.main.header.subtitle).toBe("Subtitle");
-        expect(result.main.header.subtitle2).toBe("Subsubtitle");
+        // Flat structure at root
+        expect(result.pretitle).toBe("WELCOME");
+        expect(result.title).toBe("Main Title");
+        expect(result.subtitle).toBe("Subtitle");
+        expect(result.subtitle2).toBe("Subsubtitle");
     });
 
     test("handles multiple H1s by not creating main content", () => {
         const sequence = processSequence(multipleH1s);
         const result = processGroups(sequence);
 
-        expect(result.main).toBeNull();
+        // No main means empty root title, all content in items
+        expect(result.title).toBe("");
         expect(result.items).toHaveLength(2);
-        expect(result.items[0].header.title).toBe("First H1");
-        expect(result.items[1].header.title).toBe("Second H1");
+        expect(result.items[0].title).toBe("First H1");
+        expect(result.items[1].title).toBe("Second H1");
     });
 
     test("handles Resume Pattern (H1 -> H2 Item -> H2 Item)", () => {
@@ -60,16 +59,15 @@ describe("processGroups", () => {
         const sequence = processSequence(academicExperience);
         const result = processGroups(sequence);
 
-        expect(result.main).toBeTruthy();
-        expect(result.main.header.title).toBe("Academic Experience");
+        expect(result.title).toBe("Academic Experience");
         // Should NOT have "Ph.D. in CS" as subtitle
-        expect(result.main.header.subtitle).not.toBe("Ph.D. in CS");
+        expect(result.subtitle).not.toBe("Ph.D. in CS");
 
         // The H2s should become separate items
         expect(result.items).toHaveLength(2);
-        expect(result.items[0].header.title).toBe("Ph.D. in CS");
-        expect(result.items[0].header.subtitle).toBe("2014-2018"); // H3 becomes subtitle of item
-        expect(result.items[1].header.title).toBe("Masters in Data");
+        expect(result.items[0].title).toBe("Ph.D. in CS");
+        expect(result.items[0].subtitle).toBe("2014-2018"); // H3 becomes subtitle of item
+        expect(result.items[1].title).toBe("Masters in Data");
     });
 
     test("handles 'Leaf vs Branch' heuristic (H1 -> H2 Subtitle -> H2 Item)", () => {
@@ -78,32 +76,29 @@ describe("processGroups", () => {
         const sequence = processSequence(subtitleAndItems);
         const result = processGroups(sequence);
 
-        expect(result.main).toBeTruthy();
-        expect(result.main.header.title).toBe("Work History");
-        expect(result.main.header.subtitle).toBe("A summary of my roles."); // MERGED
+        expect(result.title).toBe("Work History");
+        expect(result.subtitle).toBe("A summary of my roles."); // MERGED
 
         expect(result.items).toHaveLength(2);
-        expect(result.items[0].header.title).toBe("Google"); // SPLIT
-        expect(result.items[0].header.subtitle).toBe("2020-Present");
+        expect(result.items[0].title).toBe("Google"); // SPLIT
+        expect(result.items[0].subtitle).toBe("2020-Present");
     });
 
     test("handles complex hierarchy (Pretitle + H1 + Subtitle + Items)", () => {
         const sequence = processSequence(complexHierarchy);
         const result = processGroups(sequence);
 
-        expect(result.main).toBeTruthy();
-
         // Check Pretitle merging
-        expect(result.main.header.pretitle).toBe("INTRO");
-        expect(result.main.header.title).toBe("About Me");
+        expect(result.pretitle).toBe("INTRO");
+        expect(result.title).toBe("About Me");
 
         // Check Subtitle merging (Leaf H2)
-        expect(result.main.header.subtitle).toBe("Short Bio");
+        expect(result.subtitle).toBe("Short Bio");
 
         // Check Items (Branch H2)
         expect(result.items).toHaveLength(1);
-        expect(result.items[0].header.title).toBe("My Hobbies");
-        expect(result.items[0].header.subtitle).toBe("Reading");
+        expect(result.items[0].title).toBe("My Hobbies");
+        expect(result.items[0].subtitle).toBe("Reading");
     });
 
     test("handles simple lists with no main container", () => {
@@ -113,18 +108,18 @@ describe("processGroups", () => {
 
         // Should not try to force the first item to be "Main"
         // because both items are Level 2 (Peers).
-        expect(result.main).toBeNull();
+        expect(result.title).toBe("");
         expect(result.items).toHaveLength(2);
-        expect(result.items[0].header.title).toBe("Apple");
-        expect(result.items[1].header.title).toBe("Banana");
+        expect(result.items[0].title).toBe("Apple");
+        expect(result.items[1].title).toBe("Banana");
     });
 
     test("handles skipped levels (H1 -> H3 -> H3)", () => {
         const sequence = processSequence(skippedLevels);
         const result = processGroups(sequence);
 
-        expect(result.main).toBeTruthy();
+        expect(result.title).toBeTruthy();
         expect(result.items).toHaveLength(2); // Should treat H3s as items
-        expect(result.items[0].header.title).toBe("JavaScript");
+        expect(result.items[0].title).toBe("JavaScript");
     });
 });
