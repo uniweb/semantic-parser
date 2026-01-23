@@ -72,18 +72,16 @@ const { parseContent, mappers } = require('@uniweb/semantic-parser');
 const parsed = parseContent(doc, { pretitleLevel: 2, parseCodeAsJson: true });
 const legacy = mappers.extractors.legacy(parsed);
 
-// Returns:
+// Returns (flat structure):
 {
     main: {
-        header: { title, subtitle, subtitle2, pretitle, description, alignment },
+        title, subtitle, subtitle2, pretitle, description, alignment,
         banner: { url, alt, caption },
-        body: {
-            paragraphs, headings, imgs, videos, lists, links, icons,
-            buttons, cards, documents, forms, form, quotes,
-            properties, propertyBlocks
-        }
+        paragraphs, headings, imgs, videos, lists, links, icons,
+        buttons, cards, documents, forms, form, quotes,
+        properties, propertyBlocks
     },
-    items: [...]
+    items: [...]  // Same flat structure per item
 }
 ```
 
@@ -240,9 +238,9 @@ import Article from '@uniweb/engine/legacy/article';
 
 const article = new Article(data, options);
 
-// Exact same API as before
-console.log(article.parsed.main.header.title);
-console.log(article.parsed.main.body.paragraphs);
+// Exact same API as before (now with flat structure)
+console.log(article.parsed.main.title);
+console.log(article.parsed.main.paragraphs);
 console.log(article.parsed.items);
 ```
 

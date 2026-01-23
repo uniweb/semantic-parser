@@ -118,51 +118,49 @@ A flat array of semantic elements extracted from the document tree.
 
 ### `groups`
 
-Content organized into semantic groups with identified main content and items.
+Content organized into semantic groups with identified main content and items. The structure is flat - header and body fields are merged at the top level.
 
 ```js
 {
   main: {
-    header: {
-      pretitle: "PRETITLE TEXT",  // H3 before main title
-      title: "Main Title",         // First heading in group
-      subtitle: "Subtitle"         // Second heading in group
-    },
-    body: {
-      paragraphs: ["paragraph text", ...],
-      imgs: [
-        { url: "...", caption: "...", alt: "..." }
-      ],
-      icons: ["<svg>...</svg>", ...],
-      videos: [
-        { src: "...", caption: "...", alt: "..." }
-      ],
-      links: [
-        { href: "...", label: "..." }
-      ],
-      lists: [
-        [/* processed list items */]
-      ],
-      buttons: [
-        { content: "...", attrs: {...} }
-      ],
-      properties: [],       // Code block content
-      propertyBlocks: [],   // Array of code blocks
-      cards: [],            // Not yet implemented
-      headings: []          // Used in list items
-    },
+    // Header fields (flat)
+    pretitle: "PRETITLE TEXT",    // H3 before main title
+    title: "Main Title",           // First heading in group
+    subtitle: "Subtitle",          // Second heading in group
+
+    // Body fields (flat)
+    paragraphs: ["paragraph text", ...],
+    imgs: [
+      { url: "...", caption: "...", alt: "..." }
+    ],
+    icons: ["<svg>...</svg>", ...],
+    videos: [
+      { src: "...", caption: "...", alt: "..." }
+    ],
+    links: [
+      { href: "...", label: "..." }
+    ],
+    lists: [
+      [/* processed list items */]
+    ],
+    buttons: [
+      { content: "...", attrs: {...} }
+    ],
+    properties: [],       // Code block content
+    propertyBlocks: [],   // Array of code blocks
+    cards: [],            // Not yet implemented
+    headings: [],         // Used in list items
+
+    // Banner (flat)
     banner: {
       url: "path/to/banner.jpg",
       caption: "Banner caption",
       alt: "Banner alt text"
-    } | null,
-    metadata: {
-      level: 1,             // Heading level that started this group
-      contentTypes: {}      // Set of content types in group
-    }
+    } | null
   },
   items: [
-    // Array of groups with same structure as main
+    // Array of groups with same flat structure as main
+    // { title, pretitle, subtitle, paragraphs, imgs, ... }
   ],
   metadata: {
     dividerMode: false,     // Whether dividers were used for grouping
@@ -268,14 +266,14 @@ const result = parseContent(doc);
 ```js
 const { groups } = parseContent(doc);
 
-// Access main content
-console.log(groups.main.header.title);
-console.log(groups.main.body.paragraphs);
+// Access main content (flat structure)
+console.log(groups.main.title);
+console.log(groups.main.paragraphs);
 
 // Iterate through content items
 groups.items.forEach(item => {
-  console.log(item.header.title);
-  console.log(item.body.paragraphs);
+  console.log(item.title);
+  console.log(item.paragraphs);
 });
 ```
 

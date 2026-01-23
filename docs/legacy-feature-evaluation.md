@@ -104,7 +104,7 @@ if (header) header.description = header?.subtitle2 || body?.paragraphs?.[0] || '
 **Recommendation**: **SKIP - Engine responsibility**
 - This is business logic, not parsing
 - Different apps have different default strategies
-- Engine can easily do: `hero.description = hero.subtitle2 || hero.body.paragraphs[0] || ''`
+- Engine can easily do: `hero.description = hero.subtitle2 || hero.paragraphs[0] || ''`
 
 **Alternative**: Document pattern in mapping guide
 

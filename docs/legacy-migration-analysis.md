@@ -18,36 +18,33 @@ The legacy `Article` class and the new `semantic-parser` library have **signific
 ```javascript
 {
   main: {
-    header: {
-      title: string,           // H1
-      subtitle: string,        // H2 after H1
-      subtitle2: string,       // H3 after H2
-      pretitle: string,        // H2 BEFORE H1 ⚠️
-      description: string,     // Auto-filled from subtitle2 or first paragraph
-      alignment: string        // Heading text alignment
-    },
-    banner: {                  // First ImageBlock
+    // Flat structure (header/body fields merged at top level)
+    title: string,           // H1
+    subtitle: string,        // H2 after H1
+    subtitle2: string,       // H3 after H2
+    pretitle: string,        // H2 BEFORE H1 ⚠️
+    description: string,     // Auto-filled from subtitle2 or first paragraph
+    alignment: string,       // Heading text alignment
+    banner: {                // First ImageBlock
       url, alt, caption, direction, filter, theme, role, credit, ...
     },
-    body: {
-      paragraphs: string[],
-      headings: string[],      // All headings found in body
-      imgs: object[],
-      videos: object[],
-      lists: array[],
-      links: object[],         // Paragraph with only link → extracted
-      icons: object[],
-      buttons: object[],       // button elements
-      cards: object[],         // card-group elements
-      documents: object[],     // document-group elements
-      forms: object[],         // FormBlock elements
-      form: object,            // Last form
-      quotes: object[],        // blockquote elements
-      properties: object,      // Last code block parsed as JSON
-      propertyBlocks: object[] // All code blocks parsed as JSON
-    }
+    paragraphs: string[],
+    headings: string[],      // All headings found in body
+    imgs: object[],
+    videos: object[],
+    lists: array[],
+    links: object[],         // Paragraph with only link → extracted
+    icons: object[],
+    buttons: object[],       // button elements
+    cards: object[],         // card-group elements
+    documents: object[],     // document-group elements
+    forms: object[],         // FormBlock elements
+    form: object,            // Last form
+    quotes: object[],        // blockquote elements
+    properties: object,      // Last code block parsed as JSON
+    propertyBlocks: object[] // All code blocks parsed as JSON
   },
-  items: [...]                 // Same structure as main
+  items: [...]               // Same flat structure as main
 }
 ```
 
@@ -56,26 +53,22 @@ The legacy `Article` class and the new `semantic-parser` library have **signific
 {
   groups: {
     main: {
-      header: {
-        title: string,         // H1
-        subtitle: string,      // H2 after H1
-        pretitle: string       // H3 BEFORE H1 ⚠️ Different!
-      },
-      body: {
-        paragraphs: string[],
-        imgs: object[],
-        videos: object[],
-        lists: array[],
-        links: object[],
-        icons: object[]
-        // Missing: headings, buttons, cards, documents, forms, quotes, properties
-      },
+      // Flat structure (header/body fields merged at top level)
+      title: string,           // H1
+      subtitle: string,        // H2 after H1
+      pretitle: string,        // H3 BEFORE H1 ⚠️ Different!
+      paragraphs: string[],
+      imgs: object[],
+      videos: object[],
+      lists: array[],
+      links: object[],
+      icons: object[],
       banner: {                // First image
         url, alt, caption
-      },
-      metadata: { level: number }
+      }
+      // Missing: headings, buttons, cards, documents, forms, quotes, properties
     },
-    items: [...]               // Same structure as main
+    items: [...]               // Same flat structure as main
   }
 }
 ```
@@ -415,41 +408,38 @@ function legacyMapper(parsed, options = {}) {
     const { groups } = parsed;
     const { main, items } = groups;
 
+    // Note: The parser now outputs FLAT structure (no header/body nesting)
     return {
         main: {
-            header: {
-                title: main.header.title,
-                subtitle: main.header.subtitle,
-                subtitle2: main.header.subtitle2 || null, // If added to parser
-                pretitle: main.header.pretitle,
-                description: options.autoDescription
-                    ? (main.header.subtitle2 || main.body.paragraphs[0] || '')
-                    : null,
-                alignment: main.header.alignment || null // If added to parser
-            },
+            title: main.title,
+            subtitle: main.subtitle,
+            subtitle2: main.subtitle2 || null,
+            pretitle: main.pretitle,
+            description: options.autoDescription
+                ? (main.subtitle2 || main.paragraphs[0] || '')
+                : null,
+            alignment: main.alignment || null,
             banner: main.banner ? {
                 url: main.banner.url,
                 alt: main.banner.alt,
                 caption: main.banner.caption,
                 // ... map other banner fields
             } : null,
-            body: {
-                paragraphs: main.body.paragraphs || [],
-                headings: main.body.headings || [], // If added to parser
-                imgs: main.body.imgs || [],
-                videos: main.body.videos || [],
-                lists: main.body.lists || [],
-                links: main.body.links || [],
-                icons: main.body.icons || [],
-                buttons: main.body.buttons || [], // If added to parser
-                cards: main.body.cards || [],
-                documents: main.body.documents || [],
-                forms: main.body.forms || [],
-                form: main.body.forms?.[main.body.forms.length - 1] || null,
-                quotes: main.body.quotes || [], // If added to parser
-                properties: main.body.properties || {},
-                propertyBlocks: main.body.propertyBlocks || []
-            }
+            paragraphs: main.paragraphs || [],
+            headings: main.headings || [],
+            imgs: main.imgs || [],
+            videos: main.videos || [],
+            lists: main.lists || [],
+            links: main.links || [],
+            icons: main.icons || [],
+            buttons: main.buttons || [],
+            cards: main.cards || [],
+            documents: main.documents || [],
+            forms: main.forms || [],
+            form: main.forms?.[main.forms.length - 1] || null,
+            quotes: main.quotes || [],
+            properties: main.properties || {},
+            propertyBlocks: main.propertyBlocks || []
         },
         items: items.map(item => transformItem(item)) // Same transformation
     };

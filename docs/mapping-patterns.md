@@ -27,17 +27,17 @@ Gracefully handles content issues with silent, automatic cleanup:
 ```js
 const schema = {
   title: {
-    path: "groups.main.header.title",
+    path: "groups.main.title",
     type: "plaintext",  // Auto-strips HTML markup
     maxLength: 60       // Auto-truncates with smart boundaries
   },
   description: {
-    path: "groups.main.body.paragraphs",
+    path: "groups.main.paragraphs",
     type: "excerpt",    // Auto-creates excerpt from paragraphs
     maxLength: 150
   },
   image: {
-    path: "groups.main.body.imgs[0].url",
+    path: "groups.main.imgs[0].url",
     type: "image",      // Normalizes image data
     defaultValue: "/placeholder.jpg",
     treatEmptyAsDefault: true
@@ -74,7 +74,7 @@ Strips all HTML markup, returning clean text. Perfect for titles, labels, and an
 ```js
 {
   title: {
-    path: "groups.main.header.title",
+    path: "groups.main.title",
     type: "plaintext",
     maxLength: 60,              // Auto-truncate
     boundary: "word",            // or "sentence", "character"
@@ -94,7 +94,7 @@ Preserves safe HTML while removing dangerous tags (script, iframe, etc.).
 ```js
 {
   description: {
-    path: "groups.main.body.paragraphs[0]",
+    path: "groups.main.paragraphs[0]",
     type: "richtext",
     allowedTags: ["strong", "em", "a", "br"],  // Customize allowed tags
     stripTags: ["script", "style"]              // Additional tags to remove
@@ -112,7 +112,7 @@ Auto-generates excerpt from content, stripping markup and truncating intelligent
 ```js
 {
   excerpt: {
-    path: "groups.main.body.paragraphs",
+    path: "groups.main.paragraphs",
     type: "excerpt",
     maxLength: 150,
     boundary: "word",             // or "sentence"
@@ -131,7 +131,7 @@ Parses and optionally formats numbers.
 ```js
 {
   price: {
-    path: "groups.main.header.title",
+    path: "groups.main.title",
     type: "number",
     format: {
       decimals: 2,
@@ -152,7 +152,7 @@ Normalizes image data structure.
 ```js
 {
   image: {
-    path: "groups.main.body.imgs[0]",
+    path: "groups.main.imgs[0]",
     type: "image",
     defaultValue: "/placeholder.jpg",
     defaultAlt: "Image"
@@ -170,7 +170,7 @@ Normalizes link data structure.
 ```js
 {
   cta: {
-    path: "groups.main.body.links[0]",
+    path: "groups.main.links[0]",
     type: "link"
   }
 }
@@ -212,34 +212,34 @@ const hints = mappers.validateSchema(parsed, schema, { mode: 'visual-editor' });
 // Component declares its content requirements
 const componentSchema = {
   brand: {
-    path: "groups.main.header.pretitle",
+    path: "groups.main.pretitle",
     type: "plaintext",
     maxLength: 20,
     transform: (text) => text.toUpperCase()
   },
   title: {
-    path: "groups.main.header.title",
+    path: "groups.main.title",
     type: "plaintext",
     maxLength: 60,
     required: true
   },
   subtitle: {
-    path: "groups.main.header.subtitle",
+    path: "groups.main.subtitle",
     type: "plaintext",
     maxLength: 100
   },
   description: {
-    path: "groups.main.body.paragraphs",
+    path: "groups.main.paragraphs",
     type: "excerpt",
     maxLength: 200
   },
   image: {
-    path: "groups.main.body.imgs[0].url",
+    path: "groups.main.imgs[0].url",
     type: "image",
     defaultValue: "/placeholder.jpg"
   },
   cta: {
-    path: "groups.main.body.links[0]",
+    path: "groups.main.links[0]",
     type: "link"
   }
 };
@@ -272,8 +272,8 @@ const heroData = mappers.extractors.hero(parsed);
 
 // Or use schema-based extraction
 const customData = mappers.extractBySchema(parsed, {
-  title: "groups.main.header.title",
-  image: { path: "groups.main.body.imgs[0].url", defaultValue: "/placeholder.jpg" }
+  title: "groups.main.title",
+  image: { path: "groups.main.imgs[0].url", defaultValue: "/placeholder.jpg" }
 });
 ```
 
@@ -291,7 +291,7 @@ const image = helpers.first(images, "/default.jpg");
 const lastParagraph = helpers.last(paragraphs);
 
 // Transform array
-const titles = helpers.transformArray(items, item => item.header.title);
+const titles = helpers.transformArray(items, item => item.title);
 
 // Filter and transform
 const h2s = helpers.filterArray(headings, h => h.level === 2, h => h.content);
@@ -308,7 +308,7 @@ const cleanArray = helpers.compact([null, "text", "", undefined, "more"]);
 
 ```js
 // Get nested value safely
-const title = helpers.get(parsed, "groups.main.header.title", "Untitled");
+const title = helpers.get(parsed, "groups.main.title", "Untitled");
 
 // Pick specific properties
 const metadata = helpers.pick(parsed.groups.main, ["header", "banner"]);
@@ -337,7 +337,7 @@ if (!validation.valid) {
 ```js
 // Wrap extraction in try-catch
 const safeExtractor = helpers.safe((parsed) => {
-  return parsed.groups.main.header.title.toUpperCase();
+  return parsed.groups.main.title.toUpperCase();
 }, "DEFAULT");
 
 const title = safeExtractor(parsed); // Won't throw if path is invalid
@@ -350,24 +350,24 @@ const title = safeExtractor(parsed); // Won't throw if path is invalid
 ```js
 const { accessor } = mappers;
 
-// Simple path
-const title = accessor.getByPath(parsed, "groups.main.header.title");
+// Simple path (flat structure)
+const title = accessor.getByPath(parsed, "groups.main.title");
 
 // Array index notation
-const firstImage = accessor.getByPath(parsed, "groups.main.body.imgs[0].url");
+const firstImage = accessor.getByPath(parsed, "groups.main.imgs[0].url");
 
 // With default value
-const image = accessor.getByPath(parsed, "groups.main.body.imgs[0].url", {
+const image = accessor.getByPath(parsed, "groups.main.imgs[0].url", {
   defaultValue: "/placeholder.jpg"
 });
 
 // With transformation
-const description = accessor.getByPath(parsed, "groups.main.body.paragraphs", {
+const description = accessor.getByPath(parsed, "groups.main.paragraphs", {
   transform: (paragraphs) => paragraphs.join(" ")
 });
 
 // Required field (throws if missing)
-const title = accessor.getByPath(parsed, "groups.main.header.title", {
+const title = accessor.getByPath(parsed, "groups.main.title", {
   required: true
 });
 ```
@@ -378,22 +378,22 @@ Extract multiple fields at once using a schema:
 
 ```js
 const schema = {
-  // Shorthand: just the path
-  title: "groups.main.header.title",
+  // Shorthand: just the path (flat structure)
+  title: "groups.main.title",
 
   // Full config with options
   image: {
-    path: "groups.main.body.imgs[0].url",
+    path: "groups.main.imgs[0].url",
     defaultValue: "/placeholder.jpg"
   },
 
   description: {
-    path: "groups.main.body.paragraphs",
+    path: "groups.main.paragraphs",
     transform: (p) => p.join(" ")
   },
 
   cta: {
-    path: "groups.main.body.links[0]",
+    path: "groups.main.links[0]",
     required: false
   }
 };
@@ -412,15 +412,15 @@ const data = accessor.extractBySchema(parsed, schema);
 Extract data from array of items:
 
 ```js
-// Simple: extract single field from each item
-const titles = accessor.mapArray(parsed, "groups.items", "header.title");
+// Simple: extract single field from each item (flat structure)
+const titles = accessor.mapArray(parsed, "groups.items", "title");
 // ["Item 1", "Item 2", "Item 3"]
 
 // Complex: extract multiple fields from each item
 const cards = accessor.mapArray(parsed, "groups.items", {
-  title: "header.title",
-  text: { path: "body.paragraphs", transform: p => p.join(" ") },
-  image: { path: "body.imgs[0].url", defaultValue: "/default.jpg" }
+  title: "title",
+  text: { path: "paragraphs", transform: p => p.join(" ") },
+  image: { path: "imgs[0].url", defaultValue: "/default.jpg" }
 });
 // [
 //   { title: "...", text: "...", image: "..." },
@@ -436,11 +436,11 @@ if (accessor.hasPath(parsed, "groups.main.banner.url")) {
   // Banner exists
 }
 
-// Get first existing path
+// Get first existing path (flat structure)
 const image = accessor.getFirstExisting(parsed, [
   "groups.main.banner.url",
-  "groups.main.body.imgs[0].url",
-  "groups.items[0].body.imgs[0].url"
+  "groups.main.imgs[0].url",
+  "groups.items[0].imgs[0].url"
 ], "/fallback.jpg");
 ```
 
@@ -640,8 +640,8 @@ const enhancedData = {
   relatedPosts: helpers.transformArray(
     accessor.getByPath(parsed, "groups.items", { defaultValue: [] }),
     item => ({
-      title: item.header.title,
-      link: helpers.first(item.body.links)
+      title: item.title,
+      link: helpers.first(item.links)
     })
   ),
 
@@ -662,13 +662,13 @@ const componentSchema = {
   content: {
     type: "hero", // Use pre-built extractor
     // OR
-    mapping: {    // Use custom mapping
-      brand: "groups.main.header.pretitle",
-      title: "groups.main.header.title",
-      subtitle: "groups.main.header.subtitle",
-      image: { path: "groups.main.body.imgs[0].url", defaultValue: "/default.jpg" },
+    mapping: {    // Use custom mapping (flat paths)
+      brand: "groups.main.pretitle",
+      title: "groups.main.title",
+      subtitle: "groups.main.subtitle",
+      image: { path: "groups.main.imgs[0].url", defaultValue: "/default.jpg" },
       actions: {
-        path: "groups.main.body.links",
+        path: "groups.main.links",
         transform: links => links.map(l => ({ label: l.label, type: "primary" }))
       }
     }

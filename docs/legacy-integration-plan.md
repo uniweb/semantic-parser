@@ -23,17 +23,17 @@ A comprehensive plan for integrating battle-tested legacy features into the sema
 - ✅ Lists (bullet/ordered with nesting)
 - ✅ Code blocks
 
-**Output Structure:**
+**Output Structure (flat):**
 ```javascript
 {
   groups: {
     main: {
-      header: { pretitle, title, subtitle },
-      body: { paragraphs, imgs, icons, videos, links, lists, buttons, ... },
-      banner: { url, caption, alt },
-      metadata: { level, contentTypes }
+      // Flat structure - header and body fields merged at top level
+      pretitle, title, subtitle,
+      paragraphs, imgs, icons, videos, links, lists, buttons, ...
+      banner: { url, caption, alt }
     },
-    items: [...]
+    items: [...]  // Same flat structure
   }
 }
 ```
@@ -377,40 +377,38 @@ Add new `legacy()` extractor that returns exact legacy format:
 function legacy(parsed) {
     const groups = parsed.groups || {};
 
+    // Note: Parser now outputs FLAT structure (no header/body nesting)
     const transformGroup = (group) => {
         if (!group) return null;
 
         return {
-            header: {
-                title: group.header?.title || '',
-                subtitle: group.header?.subtitle || '',
-                subtitle2: group.header?.subtitle2 || '',
-                pretitle: group.header?.pretitle || '',
-                description: group.header?.subtitle2 || first(group.body?.paragraphs) || '',
-                alignment: group.header?.alignment || ''
-            },
+            // Flat structure - all fields at top level
+            title: group.title || '',
+            subtitle: group.subtitle || '',
+            subtitle2: group.subtitle2 || '',
+            pretitle: group.pretitle || '',
+            description: group.subtitle2 || first(group.paragraphs) || '',
+            alignment: group.alignment || '',
             banner: group.banner ? {
                 url: group.banner.url,
                 alt: group.banner.alt,
                 caption: group.banner.caption
             } : null,
-            body: {
-                paragraphs: group.body?.paragraphs || [],
-                headings: group.body?.headings || [],
-                imgs: group.body?.imgs || [],
-                videos: group.body?.videos || [],
-                lists: group.body?.lists || [],
-                links: group.body?.links || [],
-                icons: group.body?.icons || [],
-                buttons: group.body?.buttons || [],
-                cards: group.body?.cards || [],
-                documents: group.body?.documents || [],
-                forms: group.body?.forms || [],
-                form: first(group.body?.forms) || null,
-                quotes: group.body?.quotes || [],
-                properties: group.body?.properties || {},
-                propertyBlocks: group.body?.propertyBlocks || []
-            }
+            paragraphs: group.paragraphs || [],
+            headings: group.headings || [],
+            imgs: group.imgs || [],
+            videos: group.videos || [],
+            lists: group.lists || [],
+            links: group.links || [],
+            icons: group.icons || [],
+            buttons: group.buttons || [],
+            cards: group.cards || [],
+            documents: group.documents || [],
+            forms: group.forms || [],
+            form: first(group.forms) || null,
+            quotes: group.quotes || [],
+            properties: group.properties || {},
+            propertyBlocks: group.propertyBlocks || []
         };
     };
 
@@ -535,8 +533,8 @@ describe('Legacy compatibility', () => {
         const parsed = parseContent(doc, { pretitleLevel: 2 });
         const legacy = extractors.legacy(parsed);
 
-        expect(legacy.main.header.pretitle).toBe('Pretitle');
-        expect(legacy.main.header.title).toBe('Title');
+        expect(legacy.main.pretitle).toBe('Pretitle');
+        expect(legacy.main.title).toBe('Title');
     });
 
     it('extracts header alignment', () => {
@@ -550,7 +548,7 @@ describe('Legacy compatibility', () => {
         const parsed = parseContent(doc);
         const legacy = extractors.legacy(parsed);
 
-        expect(legacy.main.header.alignment).toBe('center');
+        expect(legacy.main.alignment).toBe('center');
     });
 
     it('supports subtitle2 (H3 after H2)', () => {
@@ -566,7 +564,7 @@ describe('Legacy compatibility', () => {
         const parsed = parseContent(doc);
         const legacy = extractors.legacy(parsed);
 
-        expect(legacy.main.header.subtitle2).toBe('Subtitle2');
+        expect(legacy.main.subtitle2).toBe('Subtitle2');
     });
 
     it('extracts body headings when option enabled', () => {
@@ -583,7 +581,7 @@ describe('Legacy compatibility', () => {
         const parsed = parseContent(doc, { extractBodyHeadings: true });
         const legacy = extractors.legacy(parsed);
 
-        expect(legacy.main.body.headings).toEqual(['Section 1', 'Subsection']);
+        expect(legacy.main.headings).toEqual(['Section 1', 'Subsection']);
     });
 
     it('parses code blocks as JSON when option enabled', () => {
@@ -597,8 +595,8 @@ describe('Legacy compatibility', () => {
         const parsed = parseContent(doc, { parseCodeAsJson: true });
         const legacy = extractors.legacy(parsed);
 
-        expect(legacy.main.body.properties).toEqual({ key: 'value' });
-        expect(legacy.main.body.propertyBlocks).toEqual([{ key: 'value' }]);
+        expect(legacy.main.properties).toEqual({ key: 'value' });
+        expect(legacy.main.propertyBlocks).toEqual([{ key: 'value' }]);
     });
 
     it('processes blockquotes', () => {
@@ -617,7 +615,7 @@ describe('Legacy compatibility', () => {
         const parsed = parseContent(doc);
         const legacy = extractors.legacy(parsed);
 
-        expect(legacy.main.body.quotes[0].paragraphs).toContain('Quote text');
+        expect(legacy.main.quotes[0].paragraphs).toContain('Quote text');
     });
 
     it('auto-fills header description', () => {
@@ -633,7 +631,7 @@ describe('Legacy compatibility', () => {
         const parsed = parseContent(doc);
         const legacy = extractors.legacy(parsed);
 
-        expect(legacy.main.header.description).toBe('Description');  // From subtitle2
+        expect(legacy.main.description).toBe('Description');  // From subtitle2
     });
 });
 ```

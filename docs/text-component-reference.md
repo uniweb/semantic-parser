@@ -274,9 +274,9 @@ function Card({ data }) {
 import { getByPath, extractBySchema } from '@uniweb/semantic-parser/mappers/accessor';
 
 const schema = {
-  title: { path: 'groups.main.header.title' },
-  subtitle: { path: 'groups.main.header.subtitle' },
-  content: { path: 'groups.main.body.paragraphs' }
+  title: { path: 'groups.main.title' },
+  subtitle: { path: 'groups.main.subtitle' },
+  content: { path: 'groups.main.paragraphs' }
 };
 
 const data = extractBySchema(parsed, schema);

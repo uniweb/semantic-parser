@@ -4,11 +4,10 @@ A semantic parser for ProseMirror/TipTap content structures that helps bridge th
 
 ## What it Does
 
-The parser transforms rich text editor content (ProseMirror/TipTap) into structured, semantic groups that web components can easily consume. It provides three complementary views of your content:
+The parser transforms rich text editor content (ProseMirror/TipTap) into structured, semantic groups that web components can easily consume. It provides two complementary views of your content:
 
-1. **Sequence**: A flat, ordered list of all content elements
-2. **Groups**: Content organized into semantic sections with identified main content
-3. **ByType**: Elements categorized by type for easy filtering and queries
+1. **Sequence**: An ordered list of all content elements (for rendering in document order)
+2. **Groups**: Content organized into semantic sections (main content + items)
 
 ## Installation
 
@@ -41,16 +40,16 @@ const doc = {
 const result = parseContent(doc);
 
 // Access different views
-console.log(result.sequence);  // Flat array of elements
-console.log(result.groups);    // Semantic groups with main/items
-console.log(result.byType);    // Elements organized by type
+console.log(result.sequence);  // Ordered array of elements
+console.log(result.title);     // Main content fields at top level
+console.log(result.items);     // Additional content groups
 ```
 
 ## Output Structure
 
 ### Sequence View
 
-A flat array of semantic elements preserving document order:
+An ordered array of semantic elements preserving document order:
 
 ```js
 result.sequence = [
@@ -59,72 +58,37 @@ result.sequence = [
 ]
 ```
 
-### Groups View
+### Content Structure
 
-Content organized into semantic groups:
-
-```js
-result.groups = {
-  main: {
-    header: {
-      pretitle: "",           // H3 before main title
-      title: "Welcome",       // Main heading
-      subtitle: ""            // Heading after main title
-    },
-    body: {
-      paragraphs: ["Get started today."],
-      imgs: [],
-      videos: [],
-      links: [],
-      lists: [],
-      // ... more content types
-    },
-    banner: null,             // Optional banner image
-    metadata: { level: 1 }
-  },
-  items: [],                  // Additional content groups
-  metadata: {
-    dividerMode: false,       // Using dividers vs headings
-    groups: 0
-  }
-}
-```
-
-### ByType View
-
-Elements organized by type with context:
+Main content fields are at the top level. The `items` array contains additional content groups (e.g., H3 sections), each with the same field structure:
 
 ```js
-result.byType = {
-  headings: [
-    {
-      type: "heading",
-      level: 1,
-      content: "Welcome",
-      context: {
-        position: 0,
-        previousElement: null,
-        nextElement: { type: "paragraph", ... },
-        nearestHeading: null
-      }
-    }
-  ],
-  paragraphs: [ /* ... */ ],
-  images: {
-    background: [],
-    content: [],
-    gallery: [],
-    icon: []
-  },
+result = {
+  // Main content fields
+  pretitle: "",             // H3 before main title
+  title: "Welcome",         // Main heading (H1)
+  subtitle: "",             // H2 after main title
+  paragraphs: ["Get started today."],
+  imgs: [],
+  videos: [],
+  links: [],
   lists: [],
-  metadata: {
-    totalElements: 2,
-    dominantType: "paragraph",
-    hasMedia: false
-  },
-  // Helper methods
-  getHeadingsByLevel(level),
-  getElementsByHeadingContext(filter)
+  icons: [],
+  buttons: [],
+  banner: null,             // Optional banner image
+  // ... more content types
+
+  // Additional content groups (H3 sections)
+  items: [
+    { title: "Feature 1", paragraphs: [...], links: [...] },
+    { title: "Feature 2", paragraphs: [...], links: [...] }
+  ],
+
+  // Ordered sequence for document-order rendering
+  sequence: [...],
+
+  // Original document
+  raw: { type: "doc", content: [...] }
 }
 ```
 
@@ -133,43 +97,27 @@ result.byType = {
 ### Extracting Main Content
 
 ```js
-const { groups } = parseContent(doc);
+const content = parseContent(doc);
 
-const title = groups.main.header.title;
-const description = groups.main.body.paragraphs.join(" ");
-const image = groups.main.banner?.url;
+const title = content.title;
+const description = content.paragraphs.join(" ");
+const image = content.banner?.url;
 ```
 
 ### Processing Content Sections
 
 ```js
-const { groups } = parseContent(doc);
+const content = parseContent(doc);
 
 // Main content
-console.log("Main:", groups.main.header.title);
+console.log("Title:", content.title);
+console.log("Description:", content.paragraphs);
 
-// Additional sections
-groups.items.forEach(item => {
-  console.log("Section:", item.header.title);
-  console.log("Content:", item.body.paragraphs);
+// Additional sections (H3 groups)
+content.items.forEach(item => {
+  console.log("Section:", item.title);
+  console.log("Content:", item.paragraphs);
 });
-```
-
-### Finding Specific Elements
-
-```js
-const { byType } = parseContent(doc);
-
-// Get all H2 headings
-const subheadings = byType.getHeadingsByLevel(2);
-
-// Get all background images
-const backgrounds = byType.images.background;
-
-// Get content under specific headings
-const features = byType.getElementsByHeadingContext(
-  h => h.content.includes("Features")
-);
 ```
 
 ### Sequential Processing
@@ -203,17 +151,17 @@ Automatically transform content based on field types with context-aware behavior
 ```js
 const schema = {
   title: {
-    path: "groups.main.header.title",
+    path: "title",
     type: "plaintext",  // Auto-strips <strong>, <em>, etc.
     maxLength: 60       // Auto-truncates intelligently
   },
   excerpt: {
-    path: "groups.main.body.paragraphs",
+    path: "paragraphs",
     type: "excerpt",    // Auto-creates excerpt from paragraphs
     maxLength: 150
   },
   image: {
-    path: "groups.main.body.imgs[0].url",
+    path: "imgs[0].url",
     type: "image",
     defaultValue: "/placeholder.jpg"
   }
@@ -259,15 +207,15 @@ Define custom mappings using schemas:
 
 ```js
 const schema = {
-  brand: "groups.main.header.pretitle",
-  title: "groups.main.header.title",
-  subtitle: "groups.main.header.subtitle",
+  brand: "pretitle",
+  title: "title",
+  subtitle: "subtitle",
   image: {
-    path: "groups.main.body.imgs[0].url",
+    path: "imgs[0].url",
     defaultValue: "/placeholder.jpg"
   },
   actions: {
-    path: "groups.main.body.links",
+    path: "links",
     transform: links => links.map(l => ({ label: l.label, type: "primary" }))
   }
 };
