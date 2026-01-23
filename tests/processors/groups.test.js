@@ -9,7 +9,8 @@ import {
     complexHierarchy,
     simpleList,
     skippedLevels,
-    schemaTaggedBlocks,
+    taggedJsonBlocks,
+    taggedYamlBlocks,
     untaggedCodeBlocks,
     mixedCodeBlocks,
 } from "../fixtures/groups.js";
@@ -126,8 +127,8 @@ describe("processGroups", () => {
         expect(result.items[0].title).toBe("JavaScript");
     });
 
-    test("routes schema-tagged code blocks to data object", () => {
-        const sequence = processSequence(schemaTaggedBlocks);
+    test("routes tagged JSON code blocks to data object", () => {
+        const sequence = processSequence(taggedJsonBlocks);
         const result = processGroups(sequence);
 
         expect(result.title).toBe("Navigation");
@@ -140,17 +141,29 @@ describe("processGroups", () => {
             theme: "dark",
             showLogo: true,
         });
-        // Tagged blocks should NOT go to properties
-        expect(result.properties).toEqual({});
     });
 
-    test("routes untagged code blocks to properties (legacy)", () => {
-        const sequence = processSequence(untaggedCodeBlocks);
+    test("routes tagged YAML code blocks to data object", () => {
+        const sequence = processSequence(taggedYamlBlocks);
         const result = processGroups(sequence);
 
         expect(result.title).toBe("Config");
-        expect(result.properties).toEqual({ key: "value" });
+        expect(result.data["site-config"]).toEqual({
+            title: "My Site",
+            theme: "dark",
+            features: ["seo", "analytics"],
+        });
+    });
+
+    test("untagged code blocks are not parsed as data", () => {
+        const sequence = processSequence(untaggedCodeBlocks);
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Example");
+        // Untagged blocks don't go to data
         expect(result.data).toEqual({});
+        // They stay in sequence for display
+        expect(result.sequence).toBeUndefined(); // sequence is at parser level, not groups
     });
 
     test("handles mixed tagged and untagged code blocks", () => {
@@ -158,12 +171,12 @@ describe("processGroups", () => {
         const result = processGroups(sequence);
 
         expect(result.title).toBe("Component");
-        // Tagged goes to data
+        // Tagged goes to data (parsed)
         expect(result.data["team-member"]).toEqual({
             name: "Sarah",
             role: "Engineer",
         });
-        // Untagged goes to properties
-        expect(result.properties).toEqual({ legacy: true });
+        // Untagged does NOT go to data
+        expect(Object.keys(result.data)).toHaveLength(1);
     });
 });

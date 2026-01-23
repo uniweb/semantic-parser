@@ -280,8 +280,8 @@ export const skippedLevels = {
     ],
 };
 
-// Schema-tagged code blocks (```json:schema-name)
-export const schemaTaggedBlocks = {
+// Tagged JSON code blocks (```json:tag-name)
+export const taggedJsonBlocks = {
     type: "doc",
     content: [
         {
@@ -304,7 +304,7 @@ export const schemaTaggedBlocks = {
                 },
             ],
         },
-        // Another tagged block with different schema
+        // Another tagged block with different tag
         {
             type: "codeBlock",
             attrs: { language: "json", tag: "settings" },
@@ -318,8 +318,8 @@ export const schemaTaggedBlocks = {
     ],
 };
 
-// Untagged code blocks (legacy behavior)
-export const untaggedCodeBlocks = {
+// Tagged YAML code blocks (```yaml:tag-name)
+export const taggedYamlBlocks = {
     type: "doc",
     content: [
         {
@@ -327,7 +327,29 @@ export const untaggedCodeBlocks = {
             attrs: { level: 1 },
             content: [{ type: "text", text: "Config" }],
         },
-        // Untagged JSON block - goes to properties
+        {
+            type: "codeBlock",
+            attrs: { language: "yaml", tag: "site-config" },
+            content: [
+                {
+                    type: "text",
+                    text: "title: My Site\ntheme: dark\nfeatures:\n  - seo\n  - analytics",
+                },
+            ],
+        },
+    ],
+};
+
+// Untagged code blocks (for display only, not parsed)
+export const untaggedCodeBlocks = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Example" }],
+        },
+        // Untagged JSON block - stays in sequence, not parsed as data
         {
             type: "codeBlock",
             attrs: { language: "json" },
@@ -350,7 +372,7 @@ export const mixedCodeBlocks = {
             attrs: { level: 1 },
             content: [{ type: "text", text: "Component" }],
         },
-        // Tagged block -> data
+        // Tagged block -> data (parsed)
         {
             type: "codeBlock",
             attrs: { language: "json", tag: "team-member" },
@@ -361,14 +383,14 @@ export const mixedCodeBlocks = {
                 },
             ],
         },
-        // Untagged block -> properties
+        // Untagged block -> stays in sequence only (not parsed as data)
         {
             type: "codeBlock",
             attrs: { language: "json" },
             content: [
                 {
                     type: "text",
-                    text: '{"legacy": true}',
+                    text: '{"example": "code"}',
                 },
             ],
         },

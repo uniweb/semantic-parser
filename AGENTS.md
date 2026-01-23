@@ -68,12 +68,10 @@ The parser returns a flat content structure:
   videos: [],
   lists: [],
   buttons: [],
-  properties: {},       // Untagged code blocks (last one wins)
-  propertyBlocks: [],   // All untagged code blocks
-  data: {},             // Schema-tagged code blocks (keyed by tag name)
+  data: {},        // Tagged code blocks (keyed by tag name)
   cards: [],
   headings: [],
-  items: [],            // Child content groups
+  items: [],       // Child content groups
 }
 ```
 
@@ -95,24 +93,31 @@ The sequence processor identifies several special element types by inspecting pa
 
 These are extracted into dedicated element types for easier downstream processing.
 
-### Schema-Tagged Code Blocks
+### Tagged Code Blocks
 
-Code blocks with schema tags route parsed JSON to the `data` object:
+Code blocks with tags route parsed data to the `data` object:
 
 ```markdown
 ```json:nav-links
 [{ "label": "Home", "href": "/" }]
+```
+
+```yaml:config
+title: My Site
+theme: dark
 ```
 ```
 
 Results in:
 ```js
 content.data['nav-links'] = [{ label: "Home", href: "/" }]
+content.data['config'] = { title: "My Site", theme: "dark" }
 ```
 
-**Routing rules:**
-- Tagged blocks (`json:schema-name`): go to `data[schemaName]`
-- Untagged blocks: go to `properties` (last one wins) and `propertyBlocks` (all)
+**Parsing rules:**
+- Tagged blocks with `json` language: parsed as JSON
+- Tagged blocks with `yaml`/`yml` language: parsed as YAML
+- Untagged blocks: not parsed (stay as raw text in sequence for display)
 
 ### List Processing
 

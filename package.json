@@ -37,5 +37,8 @@
     "directories": {
         "doc": "docs",
         "test": "tests"
+    },
+    "dependencies": {
+        "yaml": "^2.8.2"
     }
 }

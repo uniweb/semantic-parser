@@ -1,3 +1,43 @@
+import { parse as parseYaml } from "yaml";
+
+/**
+ * Parse code block content based on language
+ * Only parses tagged blocks with json/yaml language
+ * @param {string} text - Raw code block text
+ * @param {Object} attrs - Code block attributes (language, tag)
+ * @returns {*} Parsed data or raw text
+ */
+function parseCodeBlockContent(text, attrs) {
+    const { language, tag } = attrs || {};
+
+    // Only parse if tagged
+    if (!tag) {
+        return text;
+    }
+
+    // Parse based on language
+    const lang = (language || "").toLowerCase();
+
+    if (lang === "json") {
+        try {
+            return JSON.parse(text);
+        } catch {
+            return text;
+        }
+    }
+
+    if (lang === "yaml" || lang === "yml") {
+        try {
+            return parseYaml(text);
+        } catch {
+            return text;
+        }
+    }
+
+    // Unknown language - return raw text
+    return text;
+}
+
 /**
  * Process a ProseMirror/TipTap document into a flat sequence
  * @param {Object} doc ProseMirror document
@@ -80,19 +120,10 @@ function createSequenceElement(node, options = {}) {
             };
 
         case "codeBlock":
-            let textContent = getTextContent(content, options);
-            let parsed = "";
-
-            //Try pasre json if possible
-            try {
-                parsed = JSON.parse(`${textContent}`);
-            } catch (err) {
-                parsed = textContent;
-            }
-
+            const codeText = getTextContent(content, options);
             return {
                 type: "codeBlock",
-                text: parsed,
+                text: parseCodeBlockContent(codeText, attrs),
                 attrs,
             };
 

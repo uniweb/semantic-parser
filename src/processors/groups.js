@@ -18,8 +18,6 @@ function flattenGroup(group) {
         lists: group.body.lists || [],
         videos: group.body.videos || [],
         buttons: group.body.buttons || [],
-        properties: group.body.properties || {},
-        propertyBlocks: group.body.propertyBlocks || [],
         data: group.body.data || {},
         cards: group.body.cards || [],
         documents: group.body.documents || [],
@@ -51,8 +49,6 @@ function processGroups(sequence, options = {}) {
             lists: [],
             videos: [],
             buttons: [],
-            properties: {},
-            propertyBlocks: [],
             data: {},
             cards: [],
             documents: [],
@@ -94,8 +90,6 @@ function processGroups(sequence, options = {}) {
         lists: [],
         videos: [],
         buttons: [],
-        properties: {},
-        propertyBlocks: [],
         data: {},
         cards: [],
         documents: [],
@@ -242,8 +236,6 @@ function processGroupContent(elements) {
         links: [],
         lists: [],
         buttons: [],
-        properties: {},
-        propertyBlocks: [],
         data: {},
         cards: [],
         documents: [],
@@ -350,16 +342,11 @@ function processGroupContent(elements) {
                     break;
 
                 case "codeBlock":
-                    const codeData = element.text;
+                    // Only tagged blocks become data
+                    // Untagged blocks stay in sequence for display
                     const tag = element.attrs?.tag;
-
                     if (tag) {
-                        // Tagged block: route to data[tagName]
-                        body.data[tag] = codeData;
-                    } else {
-                        // Untagged block: legacy behavior
-                        body.properties = codeData;
-                        body.propertyBlocks.push(codeData);
+                        body.data[tag] = element.text;
                     }
                     break;
 
