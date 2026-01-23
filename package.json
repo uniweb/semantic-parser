@@ -1,6 +1,6 @@
 {
     "name": "@uniweb/semantic-parser",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "description": "Semantic parser for ProseMirror/TipTap content structures",
     "type": "module",
     "main": "./src/index.js",
