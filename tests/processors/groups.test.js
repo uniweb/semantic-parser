@@ -9,6 +9,9 @@ import {
     complexHierarchy,
     simpleList,
     skippedLevels,
+    schemaTaggedBlocks,
+    untaggedCodeBlocks,
+    mixedCodeBlocks,
 } from "../fixtures/groups.js";
 import { processSequence } from "../../src/processors/sequence.js";
 
@@ -121,5 +124,46 @@ describe("processGroups", () => {
         expect(result.title).toBeTruthy();
         expect(result.items).toHaveLength(2); // Should treat H3s as items
         expect(result.items[0].title).toBe("JavaScript");
+    });
+
+    test("routes schema-tagged code blocks to data object", () => {
+        const sequence = processSequence(schemaTaggedBlocks);
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Navigation");
+        expect(result.data).toBeDefined();
+        expect(result.data["nav-links"]).toEqual([
+            { label: "Home", href: "/" },
+            { label: "About", href: "/about" },
+        ]);
+        expect(result.data["settings"]).toEqual({
+            theme: "dark",
+            showLogo: true,
+        });
+        // Tagged blocks should NOT go to properties
+        expect(result.properties).toEqual({});
+    });
+
+    test("routes untagged code blocks to properties (legacy)", () => {
+        const sequence = processSequence(untaggedCodeBlocks);
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Config");
+        expect(result.properties).toEqual({ key: "value" });
+        expect(result.data).toEqual({});
+    });
+
+    test("handles mixed tagged and untagged code blocks", () => {
+        const sequence = processSequence(mixedCodeBlocks);
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Component");
+        // Tagged goes to data
+        expect(result.data["team-member"]).toEqual({
+            name: "Sarah",
+            role: "Engineer",
+        });
+        // Untagged goes to properties
+        expect(result.properties).toEqual({ legacy: true });
     });
 });

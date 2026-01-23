@@ -20,6 +20,7 @@ function flattenGroup(group) {
         buttons: group.body.buttons || [],
         properties: group.body.properties || {},
         propertyBlocks: group.body.propertyBlocks || [],
+        data: group.body.data || {},
         cards: group.body.cards || [],
         documents: group.body.documents || [],
         forms: group.body.forms || [],
@@ -52,6 +53,7 @@ function processGroups(sequence, options = {}) {
             buttons: [],
             properties: {},
             propertyBlocks: [],
+            data: {},
             cards: [],
             documents: [],
             forms: [],
@@ -94,6 +96,7 @@ function processGroups(sequence, options = {}) {
         buttons: [],
         properties: {},
         propertyBlocks: [],
+        data: {},
         cards: [],
         documents: [],
         forms: [],
@@ -241,6 +244,7 @@ function processGroupContent(elements) {
         buttons: [],
         properties: {},
         propertyBlocks: [],
+        data: {},
         cards: [],
         documents: [],
         forms: [],
@@ -347,8 +351,16 @@ function processGroupContent(elements) {
 
                 case "codeBlock":
                     const codeData = element.text;
-                    body.properties = codeData; // Last one
-                    body.propertyBlocks.push(codeData); // All of them
+                    const tag = element.attrs?.tag;
+
+                    if (tag) {
+                        // Tagged block: route to data[tagName]
+                        body.data[tag] = codeData;
+                    } else {
+                        // Untagged block: legacy behavior
+                        body.properties = codeData;
+                        body.propertyBlocks.push(codeData);
+                    }
                     break;
 
                 case "form":

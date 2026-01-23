@@ -279,3 +279,98 @@ export const skippedLevels = {
         },
     ],
 };
+
+// Schema-tagged code blocks (```json:schema-name)
+export const schemaTaggedBlocks = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Navigation" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "Site navigation links." }],
+        },
+        // Tagged JSON block
+        {
+            type: "codeBlock",
+            attrs: { language: "json", tag: "nav-links" },
+            content: [
+                {
+                    type: "text",
+                    text: '[{"label": "Home", "href": "/"}, {"label": "About", "href": "/about"}]',
+                },
+            ],
+        },
+        // Another tagged block with different schema
+        {
+            type: "codeBlock",
+            attrs: { language: "json", tag: "settings" },
+            content: [
+                {
+                    type: "text",
+                    text: '{"theme": "dark", "showLogo": true}',
+                },
+            ],
+        },
+    ],
+};
+
+// Untagged code blocks (legacy behavior)
+export const untaggedCodeBlocks = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Config" }],
+        },
+        // Untagged JSON block - goes to properties
+        {
+            type: "codeBlock",
+            attrs: { language: "json" },
+            content: [
+                {
+                    type: "text",
+                    text: '{"key": "value"}',
+                },
+            ],
+        },
+    ],
+};
+
+// Mixed tagged and untagged blocks
+export const mixedCodeBlocks = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Component" }],
+        },
+        // Tagged block -> data
+        {
+            type: "codeBlock",
+            attrs: { language: "json", tag: "team-member" },
+            content: [
+                {
+                    type: "text",
+                    text: '{"name": "Sarah", "role": "Engineer"}',
+                },
+            ],
+        },
+        // Untagged block -> properties
+        {
+            type: "codeBlock",
+            attrs: { language: "json" },
+            content: [
+                {
+                    type: "text",
+                    text: '{"legacy": true}',
+                },
+            ],
+        },
+    ],
+};

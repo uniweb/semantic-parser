@@ -52,35 +52,28 @@ const result = parseContent(doc);
 // }
 ```
 
-### Content Group Structure
+### Content Output Structure
 
-Groups follow a specific structure defined in `processGroupContent()`:
+The parser returns a flat content structure:
 
 ```js
 {
-  header: {
-    pretitle: '',  // Heading before main title
-    title: '',     // Main heading
-    subtitle: ''   // Heading after main title
-  },
-  body: {
-    imgs: [],
-    icons: [],
-    videos: [],
-    paragraphs: [],
-    links: [],
-    lists: [],
-    buttons: [],
-    properties: [],
-    propertyBlocks: [],
-    cards: [],
-    headings: []
-  },
-  banner: null,    // Image with banner role or image before heading
-  metadata: {
-    level: null,   // Heading level that started this group
-    contentTypes: Set()
-  }
+  title: '',       // Main heading
+  pretitle: '',    // Heading before main title
+  subtitle: '',    // Heading after main title
+  paragraphs: [],
+  links: [],
+  imgs: [],
+  icons: [],
+  videos: [],
+  lists: [],
+  buttons: [],
+  properties: {},       // Untagged code blocks (last one wins)
+  propertyBlocks: [],   // All untagged code blocks
+  data: {},             // Schema-tagged code blocks (keyed by tag name)
+  cards: [],
+  headings: [],
+  items: [],            // Child content groups
 }
 ```
 
@@ -101,6 +94,25 @@ The sequence processor identifies several special element types by inspecting pa
 - **Videos**: Paragraphs with single image (role: 'video')
 
 These are extracted into dedicated element types for easier downstream processing.
+
+### Schema-Tagged Code Blocks
+
+Code blocks with schema tags route parsed JSON to the `data` object:
+
+```markdown
+```json:nav-links
+[{ "label": "Home", "href": "/" }]
+```
+```
+
+Results in:
+```js
+content.data['nav-links'] = [{ label: "Home", href: "/" }]
+```
+
+**Routing rules:**
+- Tagged blocks (`json:schema-name`): go to `data[schemaName]`
+- Untagged blocks: go to `properties` (last one wins) and `propertyBlocks` (all)
 
 ### List Processing
 
