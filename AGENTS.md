@@ -96,7 +96,8 @@ data: {
   "nav-links": [...],     // From ```json:nav-links or ```yaml:nav-links
   "config": {...},        // From ```yaml:config
   "form": {...},          // From FormBlock editor widget
-  "cards": [...]          // From card-group editor widget (with schema field)
+  "person": [...],        // From card-group with cardType="person"
+  "event": [...]          // From card-group with cardType="event"
 }
 ```
 
@@ -121,7 +122,7 @@ The sequence processor identifies several special element types by inspecting pa
 Editor-specific nodes are mapped to standard entities:
 - `button` node → `links[]` with `role: "button"` and `variant` attribute
 - `FormBlock` → `data.form`
-- `card-group` → `data.cards` with `schema` field indicating card type
+- `card-group` → `data[cardType]` arrays (e.g., `data.person`, `data.event`)
 - `document-group` → `links[]` with `role: "document"` and `download: true`
 
 See `docs/entity-consolidation.md` for complete mapping documentation.

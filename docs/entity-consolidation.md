@@ -133,10 +133,13 @@ The `data` object holds all structured content from tagged code blocks and edito
     "nav-links": [{ label: "Home", href: "/" }],
     "config": { theme: "dark" },
 
-    // From editor card widgets (mapped)
-    "cards": [
-        { schema: "person", name: "John", title: "CEO", ... },
-        { schema: "event", date: "2024-01-15", location: "NYC", ... },
+    // From editor card widgets (mapped by type)
+    "person": [
+        { name: "John", title: "CEO", ... },
+        { name: "Jane", title: "CTO", ... },
+    ],
+    "event": [
+        { title: "Launch Party", date: "2024-01-15", location: "NYC", ... },
     ],
 }
 ```
@@ -215,9 +218,9 @@ data: {
 }
 ```
 
-### `card-group` Node → `data.cards`
+### `card-group` Node → `data[cardType]`
 
-Cards are editor widgets for structured entities like people, events, addresses. They map to `data.cards` with a `schema` field indicating the card type.
+Cards are editor widgets for structured entities like people, events, addresses. Each card type becomes a key in `data`, with an array of all cards of that type. This follows the same pattern as tagged code blocks.
 
 **Editor input:**
 ```js
@@ -238,6 +241,15 @@ Cards are editor widgets for structured entities like people, events, addresses.
         {
             type: "card",
             attrs: {
+                cardType: "person",
+                title: "John Smith",
+                subtitle: "CTO",
+                coverImg: { src: "/john.jpg" }
+            }
+        },
+        {
+            type: "card",
+            attrs: {
                 cardType: "event",
                 title: "Launch Party",
                 date: "2024-03-15",
@@ -251,9 +263,8 @@ Cards are editor widgets for structured entities like people, events, addresses.
 **Standard output:**
 ```js
 data: {
-    cards: [
+    person: [
         {
-            schema: "person",
             title: "Jane Doe",
             subtitle: "CEO",
             coverImg: "/jane.jpg",
@@ -261,13 +272,28 @@ data: {
             icon: { svg: "..." }
         },
         {
-            schema: "event",
+            title: "John Smith",
+            subtitle: "CTO",
+            coverImg: "/john.jpg"
+        }
+    ],
+    event: [
+        {
             title: "Launch Party",
             date: "2024-03-15",
             location: "San Francisco"
         }
     ]
 }
+```
+
+**Accessing cards by type:**
+```js
+// Get all person cards
+const people = content.data.person || [];
+
+// Get all event cards
+const events = content.data.event || [];
 ```
 
 **Card schemas:**

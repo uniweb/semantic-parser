@@ -344,14 +344,15 @@ function processGroupContent(elements) {
                     break;
 
                 case "card-group":
-                    // Map cards to data.cards with schema field
-                    if (!body.data.cards) body.data.cards = [];
-                    body.data.cards.push(
-                        ...element.cards.map(card => ({
-                            schema: card.cardType || 'generic',
-                            ...card,
-                        }))
-                    );
+                    // Map cards to data by type: data.person = [...], data.event = [...]
+                    // Each card type becomes a key, with an array of cards of that type
+                    (element.cards || []).forEach(card => {
+                        const cardType = card.cardType || 'card';
+                        if (!body.data[cardType]) body.data[cardType] = [];
+                        // Remove cardType from the card object since it's now the key
+                        const { cardType: _, ...cardData } = card;
+                        body.data[cardType].push(cardData);
+                    });
                     break;
 
                 case "document-group":
