@@ -1,21 +1,30 @@
 import { parse as parseYaml } from "yaml";
 
 /**
- * Parse code block content based on language
- * Only parses tagged blocks with json/yaml language
+ * Get code block data - prefers pre-parsed attrs.data, falls back to parsing text
+ *
+ * Content can come from two sources:
+ * 1. Pre-parsed at build time: attrs.data contains parsed JS object
+ * 2. Legacy/runtime: text needs to be parsed based on language
+ *
  * @param {string} text - Raw code block text
- * @param {Object} attrs - Code block attributes (language, tag)
+ * @param {Object} attrs - Code block attributes (language, tag, data)
  * @returns {*} Parsed data or raw text
  */
-function parseCodeBlockContent(text, attrs) {
-    const { language, tag } = attrs || {};
+function getCodeBlockData(text, attrs) {
+    const { language, tag, data } = attrs || {};
 
-    // Only parse if tagged
+    // Only process tagged blocks
     if (!tag) {
         return text;
     }
 
-    // Parse based on language
+    // Prefer pre-parsed data from build time (attrs.data)
+    if (data !== undefined) {
+        return data;
+    }
+
+    // Fallback: parse text at runtime (for backwards compatibility)
     const lang = (language || "").toLowerCase();
 
     if (lang === "json") {
@@ -119,11 +128,19 @@ function createSequenceElement(node, options = {}) {
                 attrs,
             };
 
+        case "dataBlock":
+            // Pre-parsed structured data from content-reader
+            return {
+                type: "dataBlock",
+                data: attrs.data,
+                tag: attrs.tag,
+            };
+
         case "codeBlock":
             const codeText = getTextContent(content, options);
             return {
                 type: "codeBlock",
-                text: parseCodeBlockContent(codeText, attrs),
+                text: getCodeBlockData(codeText, attrs),
                 attrs,
             };
 

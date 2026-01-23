@@ -341,8 +341,13 @@ function processGroupContent(elements) {
                     body.quotes.push(quoteContent.body);
                     break;
 
+                case "dataBlock":
+                    // Pre-parsed structured data from content-reader
+                    body.data[element.tag] = element.data;
+                    break;
+
                 case "codeBlock":
-                    // Only tagged blocks become data
+                    // Fallback: tagged code blocks where parsing failed at build time
                     // Untagged blocks stay in sequence for display
                     const tag = element.attrs?.tag;
                     if (tag) {
