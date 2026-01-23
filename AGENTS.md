@@ -59,8 +59,8 @@ Groups follow a specific structure defined in `processGroupContent()`:
 ```js
 {
   header: {
-    pretitle: '',  // H3 before main title
-    title: '',     // Main heading (H1 or H2)
+    pretitle: '',  // Heading before main title
+    title: '',     // Main heading
     subtitle: ''   // Heading after main title
   },
   body: {

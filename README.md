@@ -60,14 +60,14 @@ result.sequence = [
 
 ### Content Structure
 
-Main content fields are at the top level. The `items` array contains additional content groups (e.g., H3 sections), each with the same field structure:
+Main content fields are at the top level. The `items` array contains additional content groups (created when headings appear after content), each with the same field structure:
 
 ```js
 result = {
   // Main content fields
-  pretitle: "",             // H3 before main title
-  title: "Welcome",         // Main heading (H1)
-  subtitle: "",             // H2 after main title
+  pretitle: "",             // Heading before main title
+  title: "Welcome",         // Main heading
+  subtitle: "",             // Heading after main title
   paragraphs: ["Get started today."],
   imgs: [],
   videos: [],
@@ -78,7 +78,7 @@ result = {
   banner: null,             // Optional banner image
   // ... more content types
 
-  // Additional content groups (H3 sections)
+  // Additional content groups (from headings after content)
   items: [
     { title: "Feature 1", paragraphs: [...], links: [...] },
     { title: "Feature 2", paragraphs: [...], links: [...] }
@@ -113,7 +113,7 @@ const content = parseContent(doc);
 console.log("Title:", content.title);
 console.log("Description:", content.paragraphs);
 
-// Additional sections (H3 groups)
+// Additional content groups
 content.items.forEach(item => {
   console.log("Section:", item.title);
   console.log("Content:", item.paragraphs);
