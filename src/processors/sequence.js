@@ -62,24 +62,19 @@ function processSequence(doc, options = {}) {
 
 function processNode(node, sequence, options) {
     if (node.content && Array.isArray(node.content)) {
-        // node.content?.forEach((child) => processNode(child, sequence, options));
-        // return;
         node.content?.forEach((child) => {
-            const element = createSequenceElement(child, options);
+            const result = createSequenceElement(child, options);
 
-            if (element) {
-                sequence.push(element);
+            if (result) {
+                // Handle case where element returns multiple items (e.g., paragraph with only links)
+                if (Array.isArray(result)) {
+                    sequence.push(...result);
+                } else {
+                    sequence.push(result);
+                }
             }
         });
     }
-
-    // Create element based on node type
-    // const element = createSequenceElement(node, options);
-
-    // //Skip empty paragraph when create sequence
-    // if (element) {
-    //     sequence.push(element);
-    // }
 }
 
 function createSequenceElement(node, options = {}) {
@@ -93,6 +88,12 @@ function createSequenceElement(node, options = {}) {
             type: "link",
             attrs: linkVal, //label, href
         };
+    }
+
+    // Check for paragraph containing only multiple links (no other text)
+    const multipleLinks = isOnlyLinks(node);
+    if (multipleLinks) {
+        return multipleLinks; // Returns array of link elements
     }
 
     const styledLink = isStyledLink(node);
@@ -434,7 +435,7 @@ function parseDocumentBlock(itemAttrs) {
 }
 
 function parseUniwebIcon(itemAttrs) {
-    let { svg, url, size, color, preserveColors } = itemAttrs;
+    let { svg, url, size, color, preserveColors, href, target } = itemAttrs || {};
 
     return {
         svg,
@@ -442,6 +443,8 @@ function parseUniwebIcon(itemAttrs) {
         size,
         color,
         preserveColors,
+        href,
+        target,
     };
 }
 
@@ -461,12 +464,13 @@ function parseImgBlock(itemAttrs) {
         alt = "",
         url,
         href = "",
+        target = "",
         theme,
         role,
         credit = "",
     } = itemAttrs;
 
-    let { contentType, viewType, contentId, identifier } = imgInfo;
+    let { contentType, viewType, contentId, identifier } = imgInfo || {};
 
     const sizes = {
         center: "basic",
@@ -493,6 +497,7 @@ function parseImgBlock(itemAttrs) {
         imgPos: direction === "left" || direction === "right" ? direction : "",
         size: sizes[direction] || "basic",
         href,
+        target,
         theme,
         role,
         credit,
@@ -507,6 +512,8 @@ function parseVideoBlock(itemAttrs) {
         info = {},
         coverImg = {},
         alt,
+        href = "",
+        target = "",
     } = itemAttrs;
 
     let video = makeAssetUrl({
@@ -520,6 +527,8 @@ function parseVideoBlock(itemAttrs) {
         direction,
         coverImg: makeAssetUrl(coverImg),
         alt,
+        href,
+        target,
     };
 }
 
@@ -539,35 +548,64 @@ function stripTags(htmlString) {
 }
 
 function isLink(item) {
-    //For fast check, we only assume link in paragraph or heading
+    // Detect paragraphs/headings that are semantically "just a link"
+    // (single link text, possibly with decorative icons)
+    //
+    // For single-link paragraphs, the icon-link association is unambiguous:
+    // - Icons before the link text → iconBefore
+    // - Icons after the link text → iconAfter
+    //
+    // This supports natural content authoring: insert icon, type link text, add href
     if (["paragraph", "heading"].includes(item.type)) {
-        let content = item?.content || [];
+        const originalContent = item?.content || [];
 
-        //filter out icons
-        content = content.filter((c) => {
+        // Filter out icons and whitespace to check for single link
+        const textContent = originalContent.filter((c) => {
             if (c.type === "UniwebIcon") {
                 return false;
             } else if (c.type === "text") {
                 return (c.text || "").trim() !== "";
             }
-
             return true;
         });
 
-        if (content.length === 1) {
-            let contentItem = content?.[0];
+        if (textContent.length === 1) {
+            let contentItem = textContent[0];
             let marks = contentItem?.marks || [];
 
             for (let l = 0; l < marks.length; l++) {
                 let mark = marks[l];
 
-                const markType = mark?.type;
+                if (mark?.type === "link") {
+                    // Find the position of the link text in the original content
+                    const linkIndex = originalContent.findIndex(
+                        (c) => c.type === "text" && c.text === contentItem.text
+                    );
 
-                if (markType === "link") {
+                    // Collect icons before and after the link text
+                    let iconBefore = null;
+                    let iconAfter = null;
+
+                    for (let i = 0; i < originalContent.length; i++) {
+                        if (originalContent[i].type === "UniwebIcon") {
+                            const iconAttrs = parseUniwebIcon(originalContent[i].attrs);
+                            if (i < linkIndex) {
+                                // Take the last icon before the link
+                                iconBefore = iconAttrs;
+                            } else if (i > linkIndex) {
+                                // Take the first icon after the link
+                                if (!iconAfter) iconAfter = iconAttrs;
+                            }
+                        }
+                    }
+
                     return {
                         href: mark?.attrs?.href,
                         label: contentItem?.text || "",
-                        children: processInlineElements(content),
+                        iconBefore,
+                        iconAfter,
+                        // Preserve all inline elements for advanced rendering
+                        children: processInlineElements(originalContent),
                     };
                 }
             }
@@ -575,6 +613,58 @@ function isLink(item) {
     }
 
     return false;
+}
+
+/**
+ * Check if a paragraph contains ONLY links (multiple links, no other text)
+ * If so, return array of link data to be added to sequence separately.
+ *
+ * This handles the common pattern of writing links on consecutive lines:
+ * ```
+ * [Privacy Policy](/privacy)
+ * [Terms of Service](/terms)
+ * ```
+ * Markdown treats these as a single paragraph, but semantically they're separate links.
+ *
+ * @param {Object} item - Sequence item (paragraph)
+ * @returns {Array|false} Array of link objects or false
+ */
+function isOnlyLinks(item) {
+    if (item.type !== "paragraph") return false;
+
+    const content = item?.content || [];
+    if (!content.length) return false;
+
+    // Filter to get only significant content (no icons, no whitespace)
+    const textContent = content.filter((c) => {
+        if (c.type === "UniwebIcon") return false;
+        if (c.type === "text" && !(c.text || "").trim()) return false;
+        return true;
+    });
+
+    if (textContent.length < 2) return false; // Single link handled by isLink
+
+    // Check if ALL remaining content items are text nodes with link marks
+    const allLinks = textContent.every((c) => {
+        if (c.type !== "text") return false;
+        const hasLinkMark = c.marks?.some((m) => m.type === "link");
+        return hasLinkMark;
+    });
+
+    if (!allLinks) return false;
+
+    // Extract links as simple {href, label} objects
+    // Icons in this paragraph go to body.icons separately (no association)
+    return textContent.map((c) => {
+        const linkMark = c.marks.find((m) => m.type === "link");
+        return {
+            type: "link",
+            attrs: {
+                href: linkMark?.attrs?.href,
+                label: c.text || "",
+            },
+        };
+    });
 }
 
 // method to check if given item has multiple content parts and each of them has the same link attrs with different inline style (plain, em, strong, u)
