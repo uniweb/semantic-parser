@@ -322,9 +322,29 @@ Inline formatting is preserved as HTML tags:
 // Input: Text with bold mark
 // Output: "Text with <strong>bold</strong>"
 
+// Input: Text with italic mark
+// Output: "Text with <em>emphasis</em>"
+
 // Input: Link mark
 // Output: "Click <a href=\"/docs\">here</a>"
+
+// Input: Span mark (bracketed spans)
+// Output: "This is <span class=\"highlight\">highlighted</span> text"
 ```
+
+### Span Marks
+
+Bracketed spans (`[text]{.class}`) are converted to `<span>` elements with their attributes:
+
+```js
+// Input mark
+{ type: "span", attrs: { class: "highlight", id: "note-1" } }
+
+// Output HTML
+'<span class="highlight" id="note-1">text</span>'
+```
+
+Spans can have classes, IDs, and custom attributes. They combine with other marks—a span with bold becomes `<strong><span class="...">text</span></strong>`.
 
 ## Documentation
 

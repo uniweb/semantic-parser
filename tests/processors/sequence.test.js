@@ -358,4 +358,190 @@ describe("processSequence", () => {
       expect(result[0].attrs.target).toBeUndefined();
     });
   });
+
+  describe("span marks (bracketed spans)", () => {
+    test("span with class attribute", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "This is " },
+              {
+                type: "text",
+                text: "highlighted",
+                marks: [{ type: "span", attrs: { class: "highlight" } }],
+              },
+              { type: "text", text: " text." },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('This is <span class="highlight">highlighted</span> text.');
+    });
+
+    test("span with id attribute", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "target text",
+                marks: [{ type: "span", attrs: { id: "anchor" } }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('<span id="anchor">target text</span>');
+    });
+
+    test("span with both class and id", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "important note",
+                marks: [{ type: "span", attrs: { class: "callout", id: "note1" } }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('<span class="callout" id="note1">important note</span>');
+    });
+
+    test("span with custom attributes", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "data text",
+                marks: [{ type: "span", attrs: { "data-tooltip": "info", lang: "en" } }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('<span data-tooltip="info" lang="en">data text</span>');
+    });
+
+    test("span combined with bold", () => {
+      // Span is applied before bold in the processing order
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "bold highlight",
+                marks: [
+                  { type: "span", attrs: { class: "highlight" } },
+                  { type: "bold" },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('<strong><span class="highlight">bold highlight</span></strong>');
+    });
+
+    test("span combined with italic and bold", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "styled text",
+                marks: [
+                  { type: "span", attrs: { class: "muted" } },
+                  { type: "bold" },
+                  { type: "italic" },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('<em><strong><span class="muted">styled text</span></strong></em>');
+    });
+
+    test("multiple spans in paragraph", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "first",
+                marks: [{ type: "span", attrs: { class: "highlight" } }],
+              },
+              { type: "text", text: " and " },
+              {
+                type: "text",
+                text: "second",
+                marks: [{ type: "span", attrs: { class: "muted" } }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('<span class="highlight">first</span> and <span class="muted">second</span>');
+    });
+
+    test("span with empty attrs", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "plain span",
+                marks: [{ type: "span", attrs: {} }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].text).toBe('<span>plain span</span>');
+    });
+  });
 });

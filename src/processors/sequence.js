@@ -282,6 +282,26 @@ function getTextContent(content, options = {}) {
                     styledText = `<span style="background-color: var(--highlight)">${styledText}</span>`;
                 }
 
+                // span (bracketed spans with class/id/attributes)
+                if (marks.some((mark) => mark.type === "span")) {
+                    const spanMark = marks.find((mark) => mark.type === "span");
+                    const attrs = spanMark?.attrs || {};
+                    const attrParts = [];
+
+                    if (attrs.class) attrParts.push(`class="${attrs.class}"`);
+                    if (attrs.id) attrParts.push(`id="${attrs.id}"`);
+
+                    // Add any other custom attributes (data-*, etc.)
+                    for (const [key, value] of Object.entries(attrs)) {
+                        if (key !== 'class' && key !== 'id') {
+                            attrParts.push(`${key}="${value}"`);
+                        }
+                    }
+
+                    const attrString = attrParts.length > 0 ? ` ${attrParts.join(' ')}` : '';
+                    styledText = `<span${attrString}>${styledText}</span>`;
+                }
+
                 // bold
                 if (marks.some((mark) => mark.type === "bold")) {
                     styledText = `<strong>${styledText}</strong>`;
