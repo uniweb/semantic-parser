@@ -378,7 +378,7 @@ function processInlineElements(content) {
                 items.push({
                     type: "link",
                     attrs: {
-                        href: linkMark.attrs?.href,
+                        ...linkMark.attrs,  // Preserve all link attributes (role, target, etc.)
                         label: item.text || "",
                     },
                 });
@@ -620,7 +620,7 @@ function isLink(item) {
                     }
 
                     return {
-                        href: mark?.attrs?.href,
+                        ...mark?.attrs,  // Preserve all link attributes (role, target, etc.)
                         label: contentItem?.text || "",
                         iconBefore,
                         iconAfter,
@@ -673,14 +673,14 @@ function isOnlyLinks(item) {
 
     if (!allLinks) return false;
 
-    // Extract links as simple {href, label} objects
+    // Extract links with all their attributes
     // Icons in this paragraph go to body.icons separately (no association)
     return textContent.map((c) => {
         const linkMark = c.marks.find((m) => m.type === "link");
         return {
             type: "link",
             attrs: {
-                href: linkMark?.attrs?.href,
+                ...linkMark?.attrs,  // Preserve all link attributes (role, target, etc.)
                 label: c.text || "",
             },
         };
