@@ -116,11 +116,27 @@ function splitBySlices(sequence) {
             // we do NOT close the group. We let the heading merge with the image.
             const isBannerMerge = i === 1 && isBannerImage(sequence, 0);
 
+            // SPECIAL CASE: Icon preceding a heading
+            // Pattern: ![](icon) followed by ### Heading
+            // The icon should stay with the heading, not the previous group
+            let precedingIcon = null;
+            if (currentGroup.length > 0) {
+                const lastElement = currentGroup[currentGroup.length - 1];
+                if (lastElement.type === "image" && lastElement.attrs?.role === "icon") {
+                    precedingIcon = currentGroup.pop();
+                }
+            }
+
             // A new Heading Group starts a new visual block.
             // If we have gathered content in the current group, close it now.
             if (currentGroup.length > 0 && !isBannerMerge) {
                 groups.push(currentGroup);
                 currentGroup = [];
+            }
+
+            // Add the preceding icon to the new group first
+            if (precedingIcon) {
+                currentGroup.push(precedingIcon);
             }
 
             // Consume the entire semantic heading block (Title + Subtitles)
