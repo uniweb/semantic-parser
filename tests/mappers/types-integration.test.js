@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { vi } from 'vitest';
 import { parseContent } from "../../src/index.js";
 import * as accessor from "../../src/mappers/accessor.js";
 
@@ -160,7 +160,7 @@ describe("Type System Integration", () => {
 
   describe("Build Mode", () => {
     test("logs warnings for content issues", () => {
-      const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation();
 
       const schema = {
         title: {
