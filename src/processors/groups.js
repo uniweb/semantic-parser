@@ -285,7 +285,12 @@ function processGroupContent(elements) {
                     break;
 
                 case "image":
-                    body.imgs.push(preserveProps);
+                    // Check if this image is actually an icon (role="icon" from ![](lu-zap) syntax)
+                    if (element.attrs?.role === "icon") {
+                        body.icons.push(element.attrs);
+                    } else {
+                        body.imgs.push(preserveProps);
+                    }
                     break;
 
                 case "video":
