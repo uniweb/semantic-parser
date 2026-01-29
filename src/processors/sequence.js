@@ -48,6 +48,14 @@ function getCodeBlockData(text, attrs) {
 }
 
 /**
+ * Check if an inline node is an icon.
+ * TipTap editor uses type "UniwebIcon"; markdown pipeline uses type "image" with role "icon".
+ */
+function isIconNode(node) {
+    return node.type === "UniwebIcon" || (node.type === "image" && node.attrs?.role === "icon");
+}
+
+/**
  * Process a ProseMirror/TipTap document into a flat sequence
  * @param {Object} doc ProseMirror document
  * @param {Object} options Parsing options
@@ -364,7 +372,7 @@ function processInlineElements(content) {
     const items = [];
 
     for (const item of content) {
-        if (item.type === "UniwebIcon") {
+        if (isIconNode(item)) {
             items.push({
                 type: "icon",
                 attrs: parseUniwebIcon(item.attrs),
@@ -455,17 +463,23 @@ function parseDocumentBlock(itemAttrs) {
 }
 
 function parseUniwebIcon(itemAttrs) {
-    let { svg, url, size, color, preserveColors, href, target } = itemAttrs || {};
+    const { svg, url, size, color, preserveColors, href, target, library, name } = itemAttrs || {};
 
-    return {
-        svg,
-        url,
-        size,
-        color,
-        preserveColors,
-        href,
-        target,
-    };
+    // Build object with only defined fields — icon source varies:
+    // TipTap editor: svg/url (resolved inline)
+    // Markdown pipeline: library + name (resolved at runtime via CDN)
+    const icon = {};
+    if (svg) icon.svg = svg;
+    if (url) icon.url = url;
+    if (size) icon.size = size;
+    if (color) icon.color = color;
+    if (preserveColors) icon.preserveColors = preserveColors;
+    if (href) icon.href = href;
+    if (target) icon.target = target;
+    if (library) icon.library = library;
+    if (name) icon.name = name;
+
+    return icon;
 }
 
 function parseIconBlock(itemAttrs) {
@@ -581,7 +595,7 @@ function isLink(item) {
 
         // Filter out icons and whitespace to check for single link
         const textContent = originalContent.filter((c) => {
-            if (c.type === "UniwebIcon") {
+            if (isIconNode(c)) {
                 return false;
             } else if (c.type === "text") {
                 return (c.text || "").trim() !== "";
@@ -607,7 +621,7 @@ function isLink(item) {
                     let iconAfter = null;
 
                     for (let i = 0; i < originalContent.length; i++) {
-                        if (originalContent[i].type === "UniwebIcon") {
+                        if (isIconNode(originalContent[i])) {
                             const iconAttrs = parseUniwebIcon(originalContent[i].attrs);
                             if (i < linkIndex) {
                                 // Take the last icon before the link
@@ -657,7 +671,7 @@ function isOnlyLinks(item) {
 
     // Filter to get only significant content (no icons, no whitespace)
     const textContent = content.filter((c) => {
-        if (c.type === "UniwebIcon") return false;
+        if (isIconNode(c)) return false;
         if (c.type === "text" && !(c.text || "").trim()) return false;
         return true;
     });
@@ -698,7 +712,7 @@ function isStyledLink(item) {
     if (!content.length) return false;
 
     content = content.filter((c) => {
-        if (c.type === "UniwebIcon") {
+        if (isIconNode(c)) {
             return false;
         }
 

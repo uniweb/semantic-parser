@@ -240,6 +240,69 @@ describe("processSequence", () => {
       expect(result[0].attrs.iconAfter).toMatchObject({ svg: "<svg>arrow</svg>" });
     });
 
+    test("single link with markdown icon before (image with role=icon)", () => {
+      // Markdown pipeline produces type:"image" with role:"icon" instead of UniwebIcon
+      // e.g., ![](lu-arrowRight) [Get Started](/signup)
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "arrowRight", src: null },
+              },
+              {
+                type: "text",
+                text: " ",
+              },
+              {
+                type: "text",
+                text: "Get Started",
+                marks: [{ type: "link", attrs: { href: "/signup" } }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].type).toBe("link");
+      expect(result[0].attrs.href).toBe("/signup");
+      expect(result[0].attrs.label).toBe("Get Started");
+      expect(result[0].attrs.iconBefore).toMatchObject({ library: "lu", name: "arrowRight" });
+      expect(result[0].attrs.iconAfter).toBeNull();
+    });
+
+    test("single link with markdown icon after (image with role=icon)", () => {
+      // e.g., [Learn More](/about) ![](lu-externalLink)
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Learn More",
+                marks: [{ type: "link", attrs: { href: "/about" } }],
+              },
+              {
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "externalLink", src: null },
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].type).toBe("link");
+      expect(result[0].attrs.iconBefore).toBeNull();
+      expect(result[0].attrs.iconAfter).toMatchObject({ library: "lu", name: "externalLink" });
+    });
+
     test("detects multiple links paragraph and splits them", () => {
       // Common pattern: links on consecutive lines (no blank line)
       // become one paragraph in markdown, but should split into separate links
