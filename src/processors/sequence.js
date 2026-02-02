@@ -295,15 +295,25 @@ function getTextContent(content, options = {}) {
                     const spanMark = marks.find((mark) => mark.type === "span");
                     const attrs = spanMark?.attrs || {};
                     const attrParts = [];
+                    const styleParts = [];
 
                     if (attrs.class) attrParts.push(`class="${attrs.class}"`);
                     if (attrs.id) attrParts.push(`id="${attrs.id}"`);
 
-                    // Add any other custom attributes (data-*, etc.)
                     for (const [key, value] of Object.entries(attrs)) {
-                        if (key !== 'class' && key !== 'id') {
+                        if (key === 'class' || key === 'id') continue;
+                        // Convert color/bg to inline styles
+                        if (key === 'color') {
+                            styleParts.push(`color: ${value}`);
+                        } else if (key === 'bg') {
+                            styleParts.push(`background: ${value}`);
+                        } else {
                             attrParts.push(`${key}="${value}"`);
                         }
+                    }
+
+                    if (styleParts.length > 0) {
+                        attrParts.push(`style="${styleParts.join('; ')}"`)
                     }
 
                     const attrString = attrParts.length > 0 ? ` ${attrParts.join(' ')}` : '';
