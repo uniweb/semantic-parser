@@ -16,6 +16,7 @@ function flattenGroup(group) {
         icons: group.body.icons || [],
         lists: group.body.lists || [],
         videos: group.body.videos || [],
+        insets: group.body.insets || [],
         data: group.body.data || {},
         quotes: group.body.quotes || [],
         headings: group.body.headings || [],
@@ -42,6 +43,7 @@ function processGroups(sequence, options = {}) {
             icons: [],
             lists: [],
             videos: [],
+            insets: [],
             data: {},
             quotes: [],
             headings: [],
@@ -78,6 +80,7 @@ function processGroups(sequence, options = {}) {
         icons: [],
         lists: [],
         videos: [],
+        insets: [],
         data: {},
         quotes: [],
         headings: [],
@@ -216,6 +219,7 @@ function processGroupContent(elements) {
         imgs: [],
         icons: [],
         videos: [],
+        insets: [],
         paragraphs: [],
         links: [],
         lists: [],
@@ -343,8 +347,9 @@ function processGroupContent(elements) {
                     }
                     break;
 
-                case "child_block":
-                    // Inline child block reference — preserved in sequence, not in flat fields
+                case "inset":
+                case "child_block":  // backward compat
+                    body.insets.push({ refId: element.refId });
                     break;
 
                 case "form":

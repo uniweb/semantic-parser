@@ -153,9 +153,10 @@ function createSequenceElement(node, options = {}) {
                 attrs,
             };
 
-        case "inline_child_placeholder":
+        case "inset_placeholder":
+        case "inline_child_placeholder":  // backward compat
             return {
-                type: "child_block",
+                type: "inset",
                 refId: attrs.refId,
             };
         case "ImageBlock":
