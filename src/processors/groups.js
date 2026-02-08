@@ -343,6 +343,10 @@ function processGroupContent(elements) {
                     }
                     break;
 
+                case "child_block":
+                    // Inline child block reference — preserved in sequence, not in flat fields
+                    break;
+
                 case "form":
                     // Map FormBlock to data.form
                     body.data.form = element.data || element.attrs;

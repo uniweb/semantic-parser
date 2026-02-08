@@ -179,4 +179,21 @@ describe("processGroups", () => {
         // Untagged does NOT go to data
         expect(Object.keys(result.data)).toHaveLength(1);
     });
+
+    test("child_block does not appear in imgs, icons, or links", () => {
+        const sequence = [
+            { type: "heading", level: 1, text: "Title", children: [], attrs: { level: 1 } },
+            { type: "paragraph", text: "Some content", children: [], attrs: undefined },
+            { type: "child_block", refId: "inline_0" },
+            { type: "image", attrs: { src: "photo.jpg", role: "image" } },
+        ];
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Title");
+        expect(result.imgs).toHaveLength(1);
+        expect(result.imgs[0].src).toBe("photo.jpg");
+        // child_block should NOT be in imgs, icons, links, or paragraphs
+        expect(result.icons).toHaveLength(0);
+        expect(result.links).toHaveLength(0);
+    });
 });

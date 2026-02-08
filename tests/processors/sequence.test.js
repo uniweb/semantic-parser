@@ -607,4 +607,57 @@ describe("processSequence", () => {
       expect(result[0].text).toBe('<span>plain span</span>');
     });
   });
+
+  describe("inline child block placeholders", () => {
+    test("inline_child_placeholder becomes child_block in sequence", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "inline_child_placeholder",
+            attrs: { refId: "inline_0" },
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        type: "child_block",
+        refId: "inline_0",
+      });
+    });
+
+    test("inline_child_placeholder preserves position in sequence", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Our Architecture" }],
+          },
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "We built this system..." }],
+          },
+          {
+            type: "inline_child_placeholder",
+            attrs: { refId: "inline_0" },
+          },
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "This gives us flexibility." }],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result).toHaveLength(4);
+      expect(result[0].type).toBe("heading");
+      expect(result[1].type).toBe("paragraph");
+      expect(result[2]).toEqual({ type: "child_block", refId: "inline_0" });
+      expect(result[3].type).toBe("paragraph");
+    });
+  });
 });

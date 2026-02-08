@@ -153,6 +153,11 @@ function createSequenceElement(node, options = {}) {
                 attrs,
             };
 
+        case "inline_child_placeholder":
+            return {
+                type: "child_block",
+                refId: attrs.refId,
+            };
         case "ImageBlock":
             return {
                 type: "image",
