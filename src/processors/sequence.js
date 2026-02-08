@@ -154,7 +154,6 @@ function createSequenceElement(node, options = {}) {
             };
 
         case "inset_placeholder":
-        case "inline_child_placeholder":  // backward compat
             return {
                 type: "inset",
                 refId: attrs.refId,

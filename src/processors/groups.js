@@ -348,7 +348,6 @@ function processGroupContent(elements) {
                     break;
 
                 case "inset":
-                case "child_block":  // backward compat
                     body.insets.push({ refId: element.refId });
                     break;
 
