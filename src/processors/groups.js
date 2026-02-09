@@ -405,7 +405,14 @@ function identifyMainContent(groups) {
     const first = groups[0].metadata.level;
     const second = groups[1].metadata.level;
 
-    return first ? !second || first < second : false;
+    // First group has a heading more important than second → main
+    if (first && (!second || first < second)) return true;
+
+    // First group has NO heading (just body content before first heading) → promote to main
+    // This prevents empty-titled first items when content precedes headings
+    if (!first && second) return true;
+
+    return false;
 }
 
 function processInlineElements(children, body) {

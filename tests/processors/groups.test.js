@@ -13,6 +13,7 @@ import {
     taggedYamlBlocks,
     untaggedCodeBlocks,
     mixedCodeBlocks,
+    bodyBeforeHeadings,
 } from "../fixtures/groups.js";
 import { processSequence } from "../../src/processors/sequence.js";
 
@@ -178,6 +179,21 @@ describe("processGroups", () => {
         });
         // Untagged does NOT go to data
         expect(Object.keys(result.data)).toHaveLength(1);
+    });
+
+    test("promotes body content before first heading to main content", () => {
+        const sequence = processSequence(bodyBeforeHeadings);
+        const result = processGroups(sequence);
+
+        // Tagline paragraph should be main content, not an empty-titled first item
+        expect(result.title).toBe("");
+        expect(result.paragraphs.length).toBeGreaterThan(0);
+        expect(result.paragraphs[0]).toContain("Tagline");
+
+        // H3s become items
+        expect(result.items).toHaveLength(2);
+        expect(result.items[0].title).toBe("Column 1");
+        expect(result.items[1].title).toBe("Column 2");
     });
 
     test("child_block does not appear in imgs, icons, or links", () => {

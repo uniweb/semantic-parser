@@ -363,6 +363,45 @@ export const untaggedCodeBlocks = {
     ],
 };
 
+// Body content before first heading (e.g., footer with tagline before columns)
+export const bodyBeforeHeadings = {
+    type: "doc",
+    content: [
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "Tagline paragraph" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Column 1" }],
+        },
+        {
+            type: "paragraph",
+            content: [
+                {
+                    type: "text",
+                    text: "Column 1 content.",
+                },
+            ],
+        },
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Column 2" }],
+        },
+        {
+            type: "paragraph",
+            content: [
+                {
+                    type: "text",
+                    text: "Column 2 content.",
+                },
+            ],
+        },
+    ],
+};
+
 // Mixed tagged and untagged blocks
 export const mixedCodeBlocks = {
     type: "doc",
