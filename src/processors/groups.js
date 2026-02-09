@@ -173,6 +173,7 @@ function isBannerImage(sequence, i) {
 
 function readHeadingGroup(sequence, startIdx) {
     const elements = [sequence[startIdx]];
+    let hasGoneDeeper = false;
 
     // Iterate starting from the next element
     for (let i = startIdx + 1; i < sequence.length; i++) {
@@ -186,6 +187,7 @@ function readHeadingGroup(sequence, startIdx) {
         // Case 1: Strictly Deeper (Standard Subtitle/Deep Header)
         // e.g. H1 -> H2
         if (element.level > previousElement.level) {
+            hasGoneDeeper = true;
             elements.push(element);
             continue;
         }
@@ -198,7 +200,18 @@ function readHeadingGroup(sequence, startIdx) {
             continue;
         }
 
-        // Otherwise (Sibling or New Section), stop.
+        // Case 3: Same Level Continuation (multi-line heading)
+        // Only before going deeper — once a subtitle level is reached,
+        // same-level headings are new sections, not continuations.
+        // e.g. H1 -> H1 → merged into title array
+        // but H1 -> H2 -> H2 → second H2 starts a new group (items)
+        if (element.level === previousElement.level && !hasGoneDeeper) {
+            elements.push(element);
+            continue;
+        }
+
+        // Otherwise (New Section — went deeper then back up, or
+        // same-level after going deeper), stop.
         break;
     }
     return elements;
@@ -240,6 +253,10 @@ function processGroupContent(elements) {
             metadata,
         };
 
+    // Track last assigned heading slot and level for same-level merging
+    let lastSlot = null;
+    let lastLevel = null;
+
     for (let i = 0; i < elements.length; i++) {
         //We shuold only set pretitle once
         if (isPreTitle(elements, i) && !header.pretitle) {
@@ -256,19 +273,29 @@ function processGroupContent(elements) {
             //We shuold set the group level to the highest one instead of the first one.
             metadata.level ??= element.level;
 
-            // h3 h2 h1 h1
-            // Assign to header fields
-            // h3 h2 h3 h4
-            if (!header.title) {
+            // Same level as last assigned → merge into same slot as array
+            if (lastLevel !== null && element.level === lastLevel && lastSlot) {
+                const current = header[lastSlot];
+                if (Array.isArray(current)) {
+                    current.push(element.text);
+                } else {
+                    header[lastSlot] = [current, element.text];
+                }
+            } else if (!header.title) {
                 header.title = element.text;
+                lastSlot = 'title';
             } else if (!header.subtitle) {
                 header.subtitle = element.text;
+                lastSlot = 'subtitle';
             } else if (!header.subtitle2) {
                 header.subtitle2 = element.text;
+                lastSlot = 'subtitle2';
             } else {
                 // After subtitle2, we're in body - collect heading
                 body.headings.push(element.text);
+                lastSlot = null;
             }
+            lastLevel = element.level;
         } else if (element.type === "list") {
             const listItems = element.children;
 

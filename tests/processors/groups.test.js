@@ -14,6 +14,10 @@ import {
     untaggedCodeBlocks,
     mixedCodeBlocks,
     bodyBeforeHeadings,
+    consecutiveH1s,
+    consecutiveH1sWithSubtitle,
+    pretitleWithConsecutiveH1s,
+    consecutiveH3Items,
 } from "../fixtures/groups.js";
 import { processSequence } from "../../src/processors/sequence.js";
 
@@ -123,9 +127,11 @@ describe("processGroups", () => {
         const sequence = processSequence(skippedLevels);
         const result = processGroups(sequence);
 
-        expect(result.title).toBeTruthy();
-        expect(result.items).toHaveLength(2); // Should treat H3s as items
-        expect(result.items[0].title).toBe("JavaScript");
+        expect(result.title).toBe("Skills");
+        // Consecutive same-level H3s merge into a single item title array
+        // Use --- between them to force separate items
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].title).toEqual(["JavaScript", "Python"]);
     });
 
     test("routes tagged JSON code blocks to data object", () => {
@@ -194,6 +200,44 @@ describe("processGroups", () => {
         expect(result.items).toHaveLength(2);
         expect(result.items[0].title).toBe("Column 1");
         expect(result.items[1].title).toBe("Column 2");
+    });
+
+    test("merges consecutive same-level headings into title array", () => {
+        const sequence = processSequence(consecutiveH1s);
+        const result = processGroups(sequence);
+
+        expect(result.title).toEqual(["Build the future", "with confidence"]);
+        expect(result.paragraphs[0]).toContain("The platform for modern teams.");
+        expect(result.items).toHaveLength(0);
+    });
+
+    test("merges consecutive H1s with H2 subtitle", () => {
+        const sequence = processSequence(consecutiveH1sWithSubtitle);
+        const result = processGroups(sequence);
+
+        expect(result.title).toEqual(["Build the future", "with confidence"]);
+        expect(result.subtitle).toBe("The platform for modern teams");
+    });
+
+    test("handles pretitle with consecutive H1s", () => {
+        const sequence = processSequence(pretitleWithConsecutiveH1s);
+        const result = processGroups(sequence);
+
+        expect(result.pretitle).toBe("Our Mission");
+        expect(result.title).toEqual(["Build the future", "with confidence"]);
+    });
+
+    test("merges consecutive same-level H3s in items", () => {
+        const sequence = processSequence(consecutiveH3Items);
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Features");
+        expect(result.items).toHaveLength(2);
+        // First item: two consecutive H3s merged into title array
+        expect(result.items[0].title).toEqual(["Fast", "Blazing fast"]);
+        expect(result.items[0].paragraphs[0]).toContain("Speed is our priority.");
+        // Second item: single H3
+        expect(result.items[1].title).toBe("Secure");
     });
 
     test("child_block does not appear in imgs, icons, or links", () => {

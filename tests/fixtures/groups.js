@@ -403,6 +403,110 @@ export const bodyBeforeHeadings = {
 };
 
 // Mixed tagged and untagged blocks
+// Two consecutive H1s with no body between them → multi-line title
+export const consecutiveH1s = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Build the future" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "with confidence" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "The platform for modern teams." }],
+        },
+    ],
+};
+
+// Consecutive H1s followed by H2 subtitle
+export const consecutiveH1sWithSubtitle = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Build the future" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "with confidence" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 2 },
+            content: [{ type: "text", text: "The platform for modern teams" }],
+        },
+    ],
+};
+
+// Pretitle + consecutive H1s
+export const pretitleWithConsecutiveH1s = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Our Mission" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Build the future" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "with confidence" }],
+        },
+    ],
+};
+
+// Consecutive same-level H3s in items position
+export const consecutiveH3Items = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Features" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "Our key features." }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Fast" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Blazing fast" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "Speed is our priority." }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Secure" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "Built with security in mind." }],
+        },
+    ],
+};
+
 export const mixedCodeBlocks = {
     type: "doc",
     content: [
