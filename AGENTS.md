@@ -125,8 +125,6 @@ Editor-specific nodes are mapped to standard entities:
 - `card-group` → `data[cardType]` arrays (e.g., `data.person`, `data.event`)
 - `document-group` → `links[]` with `role: "document"` and `download: true`
 
-See `docs/entity-consolidation.md` for complete mapping documentation.
-
 ### Tagged Data Blocks
 
 Data blocks with tags route parsed data to the `data` object:
@@ -164,7 +162,7 @@ Lists maintain hierarchy through nested structure. The `processListItems()` func
 
 ## Content Writing Conventions
 
-The parser implements the semantic conventions documented in `docs/guide.md`. Key patterns:
+Key patterns:
 
 - **Pretitle Pattern**: Any heading followed by a more important heading (e.g., H3→H1, H2→H1, H6→H5, etc.)
 - **Banner Pattern**: Image (with banner role or followed by heading) at start of first group
@@ -187,6 +185,5 @@ Tests are organized by processor:
 
 - The parser never modifies the original ProseMirror document
 - Text content can include inline HTML for formatting (bold → `<strong>`, italic → `<em>`, links → `<a>`)
-- The `processors_old/` directory contains legacy implementations - do not modify
 - Context information in byType includes position, previous/next elements, and nearest heading
 - Group splitting logic differs significantly between heading mode and divider mode

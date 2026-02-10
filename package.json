@@ -5,9 +5,7 @@
     "type": "module",
     "main": "./src/index.js",
     "exports": {
-        ".": "./src/index.js",
-        "./mappers": "./src/mappers/index.js",
-        "./mappers/*": "./src/mappers/*.js"
+        ".": "./src/index.js"
     },
     "scripts": {
         "test": "NODE_OPTIONS=--experimental-vm-modules jest",
@@ -35,7 +33,6 @@
     },
     "homepage": "https://github.com/uniweb/semantic-parser#readme",
     "directories": {
-        "doc": "docs",
         "test": "tests"
     },
     "dependencies": {
