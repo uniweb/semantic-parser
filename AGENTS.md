@@ -69,7 +69,8 @@ The parser returns a flat content structure:
   videos: [],
   lists: [],
   quotes: [],
-  data: {},        // Structured data (tagged code blocks, forms, cards)
+  snippets: [],    // Fenced code — [{ language, text }]
+  data: {},        // Structured data (tagged data blocks, forms, cards)
   headings: [],    // Overflow headings after title/subtitle/subtitle2
   items: [],       // Child content groups (same structure recursively)
 }
@@ -127,9 +128,9 @@ Editor-specific nodes are mapped to standard entities:
 
 See `docs/entity-consolidation.md` for complete mapping documentation.
 
-### Tagged Code Blocks
+### Tagged Data Blocks
 
-Code blocks with tags route parsed data to the `data` object:
+Data blocks with tags route parsed data to the `data` object:
 
 ```markdown
 ```yaml:nav-links
