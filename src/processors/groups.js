@@ -377,7 +377,7 @@ function processGroupContent(elements) {
                         // Untagged code block — collect as a snippet
                         body.snippets.push({
                             language: element.attrs?.language || '',
-                            text: typeof element.text === 'string' ? element.text : '',
+                            code: typeof element.text === 'string' ? element.text : '',
                         });
                     }
                     break;

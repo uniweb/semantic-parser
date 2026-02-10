@@ -69,7 +69,7 @@ The parser returns a flat content structure:
   videos: [],
   lists: [],
   quotes: [],
-  snippets: [],    // Fenced code — [{ language, text }]
+  snippets: [],    // Fenced code — [{ language, code }]
   data: {},        // Structured data (tagged data blocks, forms, cards)
   headings: [],    // Overflow headings after title/subtitle/subtitle2
   items: [],       // Child content groups (same structure recursively)
