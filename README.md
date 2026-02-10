@@ -68,7 +68,6 @@ result = {
   pretitle: "",             // Heading before main title
   title: "Welcome",         // Main heading
   subtitle: "",             // Heading after main title
-  subtitle2: "",            // Third heading level
 
   // Body fields
   paragraphs: ["Get started today."],
@@ -78,8 +77,8 @@ result = {
   icons: [],
   lists: [],
   quotes: [],
-  data: {},                 // Structured data (tagged code blocks, forms, cards)
-  headings: [],             // Overflow headings after title/subtitle/subtitle2
+  data: {},                 // Structured data (tagged data blocks, forms, cards)
+  headings: [],             // Headings after subtitle, in document order
 
   // Additional content groups (from headings after content)
   items: [

@@ -61,7 +61,6 @@ The parser returns a flat content structure:
   title: '',       // Main heading
   pretitle: '',    // Heading before main title
   subtitle: '',    // Heading after main title
-  subtitle2: '',   // Third heading level
   paragraphs: [],
   links: [],       // All link-like entities (including buttons, documents)
   images: [],
@@ -71,7 +70,7 @@ The parser returns a flat content structure:
   quotes: [],
   snippets: [],    // Fenced code — [{ language, code }]
   data: {},        // Structured data (tagged data blocks, forms, cards)
-  headings: [],    // Overflow headings after title/subtitle/subtitle2
+  headings: [],    // Headings after subtitle, in document order
   items: [],       // Child content groups (same structure recursively)
 }
 ```
@@ -172,7 +171,7 @@ The parser implements the semantic conventions documented in `docs/guide.md`. Ke
 - **Divider Mode**: Presence of any `horizontalRule` switches entire document to divider-based grouping
 - **Heading Groups**: Consecutive headings with increasing levels are consumed together
 - **Main Content**: First group is main if it's the only group OR has lower heading level than second group
-- **Body Headings**: Headings that overflow the header slots (title, subtitle, subtitle2) are automatically collected in `body.headings`
+- **Body Headings**: Headings after the title and subtitle slots are collected in `body.headings` in document order
 
 ## Testing Structure
 

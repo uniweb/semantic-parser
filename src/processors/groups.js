@@ -9,7 +9,6 @@ function flattenGroup(group) {
         title: group.header.title || '',
         pretitle: group.header.pretitle || '',
         subtitle: group.header.subtitle || '',
-        subtitle2: group.header.subtitle2 || '',
         paragraphs: group.body.paragraphs || [],
         links: group.body.links || [],
         images: group.body.images || [],
@@ -37,7 +36,6 @@ function processGroups(sequence, options = {}) {
             title: '',
             pretitle: '',
             subtitle: '',
-            subtitle2: '',
             paragraphs: [],
             links: [],
             images: [],
@@ -75,7 +73,6 @@ function processGroups(sequence, options = {}) {
         title: '',
         pretitle: '',
         subtitle: '',
-        subtitle2: '',
         paragraphs: [],
         links: [],
         images: [],
@@ -227,7 +224,6 @@ function processGroupContent(elements) {
         pretitle: "",
         title: "",
         subtitle: "",
-        subtitle2: "",
     };
 
     const body = {
@@ -290,11 +286,8 @@ function processGroupContent(elements) {
             } else if (!header.subtitle) {
                 header.subtitle = element.text;
                 lastSlot = 'subtitle';
-            } else if (!header.subtitle2) {
-                header.subtitle2 = element.text;
-                lastSlot = 'subtitle2';
             } else {
-                // After subtitle2, we're in body - collect heading
+                // After subtitle, remaining headings go to body
                 body.headings.push(element.text);
                 lastSlot = null;
             }

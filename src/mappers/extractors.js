@@ -364,11 +364,10 @@ function legacy(parsed) {
             header: {
                 title: content.title || "",
                 subtitle: content.subtitle || "",
-                subtitle2: content.subtitle2 || "",
                 pretitle: content.pretitle || "",
                 // Auto-fill description (legacy behavior)
                 description:
-                    content.subtitle2 ||
+                    first(content.headings) ||
                     first(content.paragraphs) ||
                     "",
                 alignment: "", // Deprecated: always empty

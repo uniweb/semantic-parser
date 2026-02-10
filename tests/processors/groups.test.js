@@ -49,7 +49,7 @@ describe("processGroups", () => {
         expect(result.pretitle).toBe("WELCOME");
         expect(result.title).toBe("Main Title");
         expect(result.subtitle).toBe("Subtitle");
-        expect(result.subtitle2).toBe("Subsubtitle");
+        expect(result.headings[0]).toBe("Subsubtitle");
     });
 
     test("handles multiple H1s by not creating main content", () => {
