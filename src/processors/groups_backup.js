@@ -187,7 +187,7 @@ function processGroupContent(elements) {
     };
     let banner = null;
     const body = {
-        imgs: [],
+        images: [],
         icons: [],
         videos: [],
         paragraphs: [],
@@ -259,7 +259,7 @@ function processGroupContent(elements) {
                     break;
 
                 case "image":
-                    body.imgs.push({
+                    body.images.push({
                         url: element.src,
                         caption: element.caption,
                         alt: element.alt,

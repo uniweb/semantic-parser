@@ -29,7 +29,7 @@ After consolidation, the parser outputs this flat structure:
     // Body fields
     paragraphs: [],    // Text blocks with inline HTML formatting
     links: [],         // All link-like entities (buttons, documents, nav links)
-    imgs: [],          // All images (with role distinguishing purpose)
+    images: [],          // All images (with role distinguishing purpose)
     videos: [],        // Video embeds
     icons: [],         // Standalone icons
     lists: [],         // Bullet/ordered lists (recursive structure)
@@ -94,7 +94,7 @@ All link-like content merges into the `links` array. The `role` attribute distin
 
 ### Images
 
-All image content uses the `imgs` array. The `role` attribute distinguishes purpose.
+All image content uses the `images` array. The `role` attribute distinguishes purpose.
 
 ```js
 {

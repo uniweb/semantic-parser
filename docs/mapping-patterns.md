@@ -37,7 +37,7 @@ const schema = {
     maxLength: 150
   },
   image: {
-    path: "groups.main.imgs[0].url",
+    path: "groups.main.images[0].url",
     type: "image",      // Normalizes image data
     defaultValue: "/placeholder.jpg",
     treatEmptyAsDefault: true
@@ -152,7 +152,7 @@ Normalizes image data structure.
 ```js
 {
   image: {
-    path: "groups.main.imgs[0]",
+    path: "groups.main.images[0]",
     type: "image",
     defaultValue: "/placeholder.jpg",
     defaultAlt: "Image"
@@ -234,7 +234,7 @@ const componentSchema = {
     maxLength: 200
   },
   image: {
-    path: "groups.main.imgs[0].url",
+    path: "groups.main.images[0].url",
     type: "image",
     defaultValue: "/placeholder.jpg"
   },
@@ -273,7 +273,7 @@ const heroData = mappers.extractors.hero(parsed);
 // Or use schema-based extraction
 const customData = mappers.extractBySchema(parsed, {
   title: "groups.main.title",
-  image: { path: "groups.main.imgs[0].url", defaultValue: "/placeholder.jpg" }
+  image: { path: "groups.main.images[0].url", defaultValue: "/placeholder.jpg" }
 });
 ```
 
@@ -354,10 +354,10 @@ const { accessor } = mappers;
 const title = accessor.getByPath(parsed, "groups.main.title");
 
 // Array index notation
-const firstImage = accessor.getByPath(parsed, "groups.main.imgs[0].url");
+const firstImage = accessor.getByPath(parsed, "groups.main.images[0].url");
 
 // With default value
-const image = accessor.getByPath(parsed, "groups.main.imgs[0].url", {
+const image = accessor.getByPath(parsed, "groups.main.images[0].url", {
   defaultValue: "/placeholder.jpg"
 });
 
@@ -383,7 +383,7 @@ const schema = {
 
   // Full config with options
   image: {
-    path: "groups.main.imgs[0].url",
+    path: "groups.main.images[0].url",
     defaultValue: "/placeholder.jpg"
   },
 
@@ -420,7 +420,7 @@ const titles = accessor.mapArray(parsed, "groups.items", "title");
 const cards = accessor.mapArray(parsed, "groups.items", {
   title: "title",
   text: { path: "paragraphs", transform: p => p.join(" ") },
-  image: { path: "imgs[0].url", defaultValue: "/default.jpg" }
+  image: { path: "images[0].url", defaultValue: "/default.jpg" }
 });
 // [
 //   { title: "...", text: "...", image: "..." },
@@ -439,8 +439,8 @@ if (accessor.hasPath(parsed, "groups.main.banner.url")) {
 // Get first existing path (flat structure)
 const image = accessor.getFirstExisting(parsed, [
   "groups.main.banner.url",
-  "groups.main.imgs[0].url",
-  "groups.items[0].imgs[0].url"
+  "groups.main.images[0].url",
+  "groups.items[0].images[0].url"
 ], "/fallback.jpg");
 ```
 
@@ -666,7 +666,7 @@ const componentSchema = {
       brand: "groups.main.pretitle",
       title: "groups.main.title",
       subtitle: "groups.main.subtitle",
-      image: { path: "groups.main.imgs[0].url", defaultValue: "/default.jpg" },
+      image: { path: "groups.main.images[0].url", defaultValue: "/default.jpg" },
       actions: {
         path: "groups.main.links",
         transform: links => links.map(l => ({ label: l.label, type: "primary" }))

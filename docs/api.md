@@ -130,7 +130,7 @@ Content organized into semantic groups with identified main content and items. T
 
     // Body fields (flat)
     paragraphs: ["paragraph text", ...],
-    imgs: [
+    images: [
       { url: "...", caption: "...", alt: "..." }
     ],
     icons: ["<svg>...</svg>", ...],
@@ -160,7 +160,7 @@ Content organized into semantic groups with identified main content and items. T
   },
   items: [
     // Array of groups with same flat structure as main
-    // { title, pretitle, subtitle, paragraphs, imgs, ... }
+    // { title, pretitle, subtitle, paragraphs, images, ... }
   ],
   metadata: {
     dividerMode: false,     // Whether dividers were used for grouping

@@ -12,7 +12,7 @@ function flattenGroup(group) {
         subtitle2: group.header.subtitle2 || '',
         paragraphs: group.body.paragraphs || [],
         links: group.body.links || [],
-        imgs: group.body.imgs || [],
+        images: group.body.images || [],
         icons: group.body.icons || [],
         lists: group.body.lists || [],
         videos: group.body.videos || [],
@@ -39,7 +39,7 @@ function processGroups(sequence, options = {}) {
             subtitle2: '',
             paragraphs: [],
             links: [],
-            imgs: [],
+            images: [],
             icons: [],
             lists: [],
             videos: [],
@@ -76,7 +76,7 @@ function processGroups(sequence, options = {}) {
         subtitle2: '',
         paragraphs: [],
         links: [],
-        imgs: [],
+        images: [],
         icons: [],
         lists: [],
         videos: [],
@@ -229,7 +229,7 @@ function processGroupContent(elements) {
     };
 
     const body = {
-        imgs: [],
+        images: [],
         icons: [],
         videos: [],
         insets: [],
@@ -320,7 +320,7 @@ function processGroupContent(elements) {
                     if (element.attrs?.role === "icon") {
                         body.icons.push(element.attrs);
                     } else {
-                        body.imgs.push(preserveProps);
+                        body.images.push(preserveProps);
                     }
                     break;
 

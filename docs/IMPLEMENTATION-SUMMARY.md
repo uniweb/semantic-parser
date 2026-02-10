@@ -77,7 +77,7 @@ const legacy = mappers.extractors.legacy(parsed);
     main: {
         title, subtitle, subtitle2, pretitle, description, alignment,
         banner: { url, alt, caption },
-        paragraphs, headings, imgs, videos, lists, links, icons,
+        paragraphs, headings, images, videos, lists, links, icons,
         buttons, cards, documents, forms, form, quotes,
         properties, propertyBlocks
     },

@@ -6,7 +6,7 @@ import { applyType, validateType } from './types.js';
 
 /**
  * Parse a path string into segments, handling array indices
- * @param {string} path - Path string (e.g., 'groups.main.body.imgs[0].url')
+ * @param {string} path - Path string (e.g., 'groups.main.body.images[0].url')
  * @returns {Array} Array of path segments
  */
 function parsePath(path) {
@@ -118,7 +118,7 @@ function getByPath(parsed, path, options = {}) {
  *     maxLength: 60
  *   },
  *   image: {
- *     path: 'groups.main.body.imgs[0].url',
+ *     path: 'groups.main.body.images[0].url',
  *     type: 'image',
  *     defaultValue: '/placeholder.jpg'
  *   },

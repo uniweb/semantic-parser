@@ -2,7 +2,7 @@
  * Pre-built extractors for common component patterns
  *
  * All extractors work with the flat content structure:
- * - Root level: title, pretitle, subtitle, paragraphs, links, imgs, items, etc.
+ * - Root level: title, pretitle, subtitle, paragraphs, links, images, items, etc.
  * - Items array: each item has flat structure (title, paragraphs, etc.)
  */
 
@@ -25,8 +25,8 @@ function hero(parsed) {
         subtitle: parsed?.subtitle || null,
         kicker: parsed?.pretitle || null,
         description: parsed?.paragraphs || [],
-        image: first(parsed?.imgs)?.url || null,
-        imageAlt: first(parsed?.imgs)?.alt || null,
+        image: first(parsed?.images)?.url || null,
+        imageAlt: first(parsed?.images)?.alt || null,
         banner: null, // Banner detection would need to be added separately
         cta: buttonLink || plainLink || null,
     };
@@ -56,8 +56,8 @@ function card(parsed, options = {}) {
             title: content.title || null,
             subtitle: content.subtitle || null,
             description: content.paragraphs || [],
-            image: first(content.imgs)?.url || null,
-            imageAlt: first(content.imgs)?.alt || null,
+            image: first(content.images)?.url || null,
+            imageAlt: first(content.images)?.alt || null,
             icon: first(content.icons) || null,
             link: plainLink || null,
             cta: buttonLink || plainLink || null,
@@ -91,7 +91,7 @@ function article(parsed) {
         date: null,   // Would need metadata support
         banner: null, // Banner detection would need to be added separately
         content: parsed?.paragraphs || [],
-        images: parsed?.imgs || [],
+        images: parsed?.images || [],
         videos: parsed?.videos || [],
         links: parsed?.links || [],
     };
@@ -166,7 +166,7 @@ function features(parsed) {
             subtitle: item.subtitle || null,
             description: item.paragraphs || [],
             icon: first(item.icons) || null,
-            image: first(item.imgs)?.url || null,
+            image: first(item.images)?.url || null,
             link: first(item.links) || null,
         }))
         .filter((feature) => feature.title);
@@ -192,8 +192,8 @@ function testimonial(parsed, options = {}) {
             author: content.title || null,
             role: content.subtitle || null,
             company: content.pretitle || null,
-            image: first(content.imgs)?.url || null,
-            imageAlt: first(content.imgs)?.alt || null,
+            image: first(content.images)?.url || null,
+            imageAlt: first(content.images)?.alt || null,
         };
     };
 
@@ -275,8 +275,8 @@ function team(parsed) {
             role: item.subtitle || null,
             department: item.pretitle || null,
             bio: item.paragraphs || [],
-            image: first(item.imgs)?.url || null,
-            imageAlt: first(item.imgs)?.alt || null,
+            image: first(item.images)?.url || null,
+            imageAlt: first(item.images)?.alt || null,
             links: item.links || [],
         }))
         .filter((member) => member.name);
@@ -296,14 +296,14 @@ function gallery(parsed, options = {}) {
     const images = [];
 
     if (source === "main" || source === "all") {
-        const mainImages = parsed?.imgs || [];
+        const mainImages = parsed?.images || [];
         images.push(...mainImages);
     }
 
     if (source === "items" || source === "all") {
         const items = parsed?.items || [];
         items.forEach((item) => {
-            const itemImages = item.imgs || [];
+            const itemImages = item.images || [];
             images.push(...itemImages);
         });
     }
@@ -339,12 +339,12 @@ function legacy(parsed) {
     const transformToNested = (content) => {
         if (!content) return null;
 
-        let imgs = content.imgs || [];
-        let banner = imgs.filter((item) => {
+        let images = content.images || [];
+        let banner = images.filter((item) => {
             return (item.role = "banner");
         })?.[0];
 
-        if (!banner) banner = imgs[0];
+        if (!banner) banner = images[0];
 
         // Reconstruct deprecated fields from new structure
         const links = content.links || [];
@@ -377,7 +377,7 @@ function legacy(parsed) {
             body: {
                 paragraphs: content.paragraphs || [],
                 headings: content.headings || [],
-                imgs,
+                images,
                 videos: content.videos || [],
                 lists: content.lists || [],
                 links: plainLinks,

@@ -30,7 +30,7 @@ A comprehensive plan for integrating battle-tested legacy features into the sema
     main: {
       // Flat structure - header and body fields merged at top level
       pretitle, title, subtitle,
-      paragraphs, imgs, icons, videos, links, lists, buttons, ...
+      paragraphs, images, icons, videos, links, lists, buttons, ...
       banner: { url, caption, alt }
     },
     items: [...]  // Same flat structure
@@ -396,7 +396,7 @@ function legacy(parsed) {
             } : null,
             paragraphs: group.paragraphs || [],
             headings: group.headings || [],
-            imgs: group.imgs || [],
+            images: group.images || [],
             videos: group.videos || [],
             lists: group.lists || [],
             links: group.links || [],

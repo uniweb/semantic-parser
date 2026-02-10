@@ -64,7 +64,7 @@ The parser returns a flat content structure:
   subtitle2: '',   // Third heading level
   paragraphs: [],
   links: [],       // All link-like entities (including buttons, documents)
-  imgs: [],
+  images: [],
   icons: [],
   videos: [],
   lists: [],

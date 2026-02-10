@@ -73,7 +73,7 @@ result = {
   // Body fields
   paragraphs: ["Get started today."],
   links: [],                // All links (including buttons, documents)
-  imgs: [],
+  images: [],
   videos: [],
   icons: [],
   lists: [],
@@ -164,7 +164,7 @@ const schema = {
     maxLength: 150
   },
   image: {
-    path: "imgs[0].url",
+    path: "images[0].url",
     type: "image",
     defaultValue: "/placeholder.jpg"
   }
@@ -214,7 +214,7 @@ const schema = {
   title: "title",
   subtitle: "subtitle",
   image: {
-    path: "imgs[0].url",
+    path: "images[0].url",
     defaultValue: "/placeholder.jpg"
   },
   actions: {

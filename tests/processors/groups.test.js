@@ -240,7 +240,7 @@ describe("processGroups", () => {
         expect(result.items[1].title).toBe("Secure");
     });
 
-    test("child_block does not appear in imgs, icons, or links", () => {
+    test("child_block does not appear in images, icons, or links", () => {
         const sequence = [
             { type: "heading", level: 1, text: "Title", children: [], attrs: { level: 1 } },
             { type: "paragraph", text: "Some content", children: [], attrs: undefined },
@@ -250,9 +250,9 @@ describe("processGroups", () => {
         const result = processGroups(sequence);
 
         expect(result.title).toBe("Title");
-        expect(result.imgs).toHaveLength(1);
-        expect(result.imgs[0].src).toBe("photo.jpg");
-        // child_block should NOT be in imgs, icons, links, or paragraphs
+        expect(result.images).toHaveLength(1);
+        expect(result.images[0].src).toBe("photo.jpg");
+        // child_block should NOT be in images, icons, links, or paragraphs
         expect(result.icons).toHaveLength(0);
         expect(result.links).toHaveLength(0);
     });

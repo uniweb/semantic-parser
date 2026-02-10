@@ -846,7 +846,7 @@ export default class Article {
 
     parseGenericData(data) {
         let body = {
-            imgs: [],
+            images: [],
             videos: [],
             lists: [],
             links: [],
@@ -887,7 +887,7 @@ export default class Article {
                     }
                     break;
                 case 'ImageBlock':
-                    body.imgs.push(this.parseImgBlock(itemAttrs));
+                    body.images.push(this.parseImgBlock(itemAttrs));
                     break;
                 case 'Video':
                     body.videos.push(Article.parseVideoBlock(itemAttrs));

@@ -30,7 +30,7 @@ The legacy `Article` class and the new `semantic-parser` library have **signific
     },
     paragraphs: string[],
     headings: string[],      // All headings found in body
-    imgs: object[],
+    images: object[],
     videos: object[],
     lists: array[],
     links: object[],         // Paragraph with only link → extracted
@@ -58,7 +58,7 @@ The legacy `Article` class and the new `semantic-parser` library have **signific
       subtitle: string,        // H2 after H1
       pretitle: string,        // H3 BEFORE H1 ⚠️ Different!
       paragraphs: string[],
-      imgs: object[],
+      images: object[],
       videos: object[],
       lists: array[],
       links: object[],
@@ -427,7 +427,7 @@ function legacyMapper(parsed, options = {}) {
             } : null,
             paragraphs: main.paragraphs || [],
             headings: main.headings || [],
-            imgs: main.imgs || [],
+            images: main.images || [],
             videos: main.videos || [],
             lists: main.lists || [],
             links: main.links || [],
