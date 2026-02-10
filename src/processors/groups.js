@@ -17,6 +17,7 @@ function flattenGroup(group) {
         lists: group.body.lists || [],
         videos: group.body.videos || [],
         insets: group.body.insets || [],
+        snippets: group.body.snippets || [],
         data: group.body.data || {},
         quotes: group.body.quotes || [],
         headings: group.body.headings || [],
@@ -44,6 +45,7 @@ function processGroups(sequence, options = {}) {
             lists: [],
             videos: [],
             insets: [],
+            snippets: [],
             data: {},
             quotes: [],
             headings: [],
@@ -233,6 +235,7 @@ function processGroupContent(elements) {
         icons: [],
         videos: [],
         insets: [],
+        snippets: [],
         paragraphs: [],
         links: [],
         lists: [],
@@ -366,11 +369,16 @@ function processGroupContent(elements) {
                     break;
 
                 case "codeBlock":
-                    // Fallback: tagged code blocks where parsing failed at build time
-                    // Untagged blocks stay in sequence for display
                     const tag = element.attrs?.tag;
                     if (tag) {
+                        // Tagged block where parsing failed at build time — store as data
                         body.data[tag] = element.text;
+                    } else {
+                        // Untagged code block — collect as a snippet
+                        body.snippets.push({
+                            language: element.attrs?.language || '',
+                            text: typeof element.text === 'string' ? element.text : '',
+                        });
                     }
                     break;
 
