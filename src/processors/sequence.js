@@ -412,21 +412,25 @@ function processInlineElements(content) {
     return items;
 }
 
+const ASSET_BASE_URL = "https://assets.uniweb.app/";
+
+/**
+ * Resolve an asset identifier ({version}/{filename}) to a direct URL.
+ * Assets are hosted at assets.uniweb.app under dist/{version}/base.{ext}.
+ */
+function resolveAssetIdentifier(identifier) {
+    if (!identifier || typeof identifier !== "string") return "";
+    const [version, filename] = identifier.split("/");
+    if (!filename) return "";
+    const ext = filename.substring(filename.lastIndexOf(".") + 1);
+    return `${ASSET_BASE_URL}dist/${version}/base.${ext}`;
+}
+
 function makeAssetUrl(info) {
-    let url = "";
-
-    let src = info?.src || info?.url || "";
-
-    if (src) {
-        url = src;
-    } else if (info?.identifier) {
-        url =
-            new uniweb.Profile(`docufolio/profile`, "_template").getAssetInfo(
-                info.identifier
-            )?.src || "";
-    }
-
-    return url;
+    const src = info?.src || info?.url || "";
+    if (src) return src;
+    if (info?.identifier) return resolveAssetIdentifier(info.identifier);
+    return "";
 }
 
 function parseCardBlock(itemAttrs) {
@@ -467,10 +471,7 @@ function parseDocumentBlock(itemAttrs) {
         const { identifier = "" } = info;
 
         if (identifier) {
-            ele.downloadUrl = new uniweb.Profile(
-                `docufolio/profile`,
-                "_template"
-            ).getAssetInfo(identifier)?.href;
+            ele.downloadUrl = resolveAssetIdentifier(identifier);
         }
     }
 
