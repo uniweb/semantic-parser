@@ -1,5 +1,6 @@
 import { processSequence } from "./processors/sequence.js";
 import { processGroups } from "./processors/groups.js";
+import { buildDoc } from "./builders/doc.js";
 
 /**
  * Parse ProseMirror/TipTap content into semantic structure
@@ -29,4 +30,4 @@ function parseContent(doc, options = {}) {
     };
 }
 
-export { parseContent };
+export { parseContent, buildDoc };
