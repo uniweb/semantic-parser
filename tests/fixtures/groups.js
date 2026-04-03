@@ -507,6 +507,70 @@ export const consecutiveH3Items = {
     ],
 };
 
+// H1 followed immediately by H3s — skipped levels without divider.
+// The level gap (2+) signals a structural tier change, so H3s become
+// items rather than grouping as subtitle of H1.
+export const skippedLevelConsecutive = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Features" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Speed" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "We are blazingly fast." }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [{ type: "text", text: "Security" }],
+        },
+        {
+            type: "paragraph",
+            content: [
+                { type: "text", text: "Enterprise-grade protection." },
+            ],
+        },
+    ],
+};
+
+// H2 followed by H4s — same skipped-level rule at a different tier.
+export const skippedLevelH2toH4 = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 2 },
+            content: [{ type: "text", text: "Overview" }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 4 },
+            content: [{ type: "text", text: "Detail A" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "First detail." }],
+        },
+        {
+            type: "heading",
+            attrs: { level: 4 },
+            content: [{ type: "text", text: "Detail B" }],
+        },
+        {
+            type: "paragraph",
+            content: [{ type: "text", text: "Second detail." }],
+        },
+    ],
+};
+
 export const mixedCodeBlocks = {
     type: "doc",
     content: [

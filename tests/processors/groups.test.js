@@ -18,6 +18,8 @@ import {
     consecutiveH1sWithSubtitle,
     pretitleWithConsecutiveH1s,
     consecutiveH3Items,
+    skippedLevelConsecutive,
+    skippedLevelH2toH4,
 } from "../fixtures/groups.js";
 import { processSequence } from "../../src/processors/sequence.js";
 
@@ -123,13 +125,13 @@ describe("processGroups", () => {
         expect(result.items[1].title).toBe("Banana");
     });
 
-    test("handles skipped levels (H1 -> H3 -> H3)", () => {
+    test("handles divider-separated skipped levels (H1 --- H3 H3)", () => {
         const sequence = processSequence(skippedLevels);
         const result = processGroups(sequence);
 
         expect(result.title).toBe("Skills");
-        // Consecutive same-level H3s merge into a single item title array
-        // Use --- between them to force separate items
+        // Divider separates H1 from H3s; consecutive same-level H3s
+        // merge into a single item title array
         expect(result.items).toHaveLength(1);
         expect(result.items[0].title).toEqual(["JavaScript", "Python"]);
     });
@@ -238,6 +240,30 @@ describe("processGroups", () => {
         expect(result.items[0].paragraphs[0]).toContain("Speed is our priority.");
         // Second item: single H3
         expect(result.items[1].title).toBe("Secure");
+    });
+
+    test("does not group headings that skip levels (H1 -> H3)", () => {
+        const sequence = processSequence(skippedLevelConsecutive);
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Features");
+        expect(result.subtitle).toBe(""); // H3 NOT grouped as subtitle
+        expect(result.items).toHaveLength(2);
+        expect(result.items[0].title).toBe("Speed");
+        expect(result.items[0].paragraphs[0]).toContain("blazingly fast");
+        expect(result.items[1].title).toBe("Security");
+        expect(result.items[1].paragraphs[0]).toContain("Enterprise-grade");
+    });
+
+    test("does not group headings that skip levels (H2 -> H4)", () => {
+        const sequence = processSequence(skippedLevelH2toH4);
+        const result = processGroups(sequence);
+
+        expect(result.title).toBe("Overview");
+        expect(result.subtitle).toBe("");
+        expect(result.items).toHaveLength(2);
+        expect(result.items[0].title).toBe("Detail A");
+        expect(result.items[1].title).toBe("Detail B");
     });
 
     test("child_block does not appear in images, icons, or links", () => {

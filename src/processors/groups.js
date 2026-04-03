@@ -183,9 +183,11 @@ function readHeadingGroup(sequence, startIdx) {
             break;
         }
 
-        // Case 1: Strictly Deeper (Standard Subtitle/Deep Header)
-        // e.g. H1 -> H2
-        if (element.level > previousElement.level) {
+        // Case 1: Adjacent Deeper (Standard Subtitle/Deep Header)
+        // Only group headings that are exactly one level apart.
+        // e.g. H1 -> H2 groups, but H1 -> H3 does not (skipped level
+        // signals a structural tier change, not a title-subtitle pair).
+        if (element.level - previousElement.level === 1) {
             hasGoneDeeper = true;
             elements.push(element);
             continue;

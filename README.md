@@ -153,6 +153,8 @@ Groups are created based on heading patterns. A new group starts when:
 - Multiple H1s appear (no main content created)
 - The heading level indicates a new section
 
+**Heading group formation:** Consecutive headings are consumed as a single semantic unit only when each subsequent heading is _exactly one level deeper_ than the previous (e.g., H1→H2→H3). Skipping levels (H1→H3) breaks the group — the deeper heading starts a new group instead of becoming a subtitle. This reflects natural document structure: a large level gap signals items, not a title-subtitle pair.
+
 **Pretitle Detection:** Any heading followed by a more important heading is automatically detected as a pretitle:
 - H3 before H1 → pretitle ✅
 - H2 before H1 → pretitle ✅

@@ -167,7 +167,7 @@ Key patterns:
 - **Pretitle Pattern**: Any heading followed by a more important heading (e.g., H3→H1, H2→H1, H6→H5, etc.)
 - **Banner Pattern**: Image (with banner role or followed by heading) at start of first group
 - **Divider Mode**: Presence of any `horizontalRule` switches entire document to divider-based grouping
-- **Heading Groups**: Consecutive headings with increasing levels are consumed together
+- **Heading Groups**: Consecutive headings are consumed together only when each is exactly one level deeper (H1→H2 yes, H1→H3 no — skipped levels start a new group)
 - **Main Content**: First group is main if it's the only group OR has lower heading level than second group
 - **Body Headings**: Headings after the title and subtitle slots are collected in `body.headings` in document order
 
