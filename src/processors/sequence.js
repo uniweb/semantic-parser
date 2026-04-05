@@ -145,13 +145,22 @@ function createSequenceElement(node, options = {}) {
                 tag: attrs.tag,
             };
 
-        case "codeBlock":
+        case "codeBlock": {
             const codeText = getTextContent(content, options);
+            // Tagged code blocks are semantically data blocks, not code
+            if (attrs?.tag) {
+                return {
+                    type: "dataBlock",
+                    tag: attrs.tag,
+                    data: getCodeBlockData(codeText, attrs),
+                };
+            }
             return {
                 type: "codeBlock",
-                text: getCodeBlockData(codeText, attrs),
+                text: codeText,
                 attrs,
             };
+        }
 
         case "inset_placeholder":
             return {

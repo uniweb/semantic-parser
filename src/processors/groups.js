@@ -364,17 +364,10 @@ function processGroupContent(elements) {
                     break;
 
                 case "codeBlock":
-                    const tag = element.attrs?.tag;
-                    if (tag) {
-                        // Tagged block where parsing failed at build time — store as data
-                        body.data[tag] = element.text;
-                    } else {
-                        // Untagged code block — collect as a snippet
-                        body.snippets.push({
-                            language: element.attrs?.language || '',
-                            code: typeof element.text === 'string' ? element.text : '',
-                        });
-                    }
+                    body.snippets.push({
+                        language: element.attrs?.language || '',
+                        code: typeof element.text === 'string' ? element.text : '',
+                    });
                     break;
 
                 case "inset":
