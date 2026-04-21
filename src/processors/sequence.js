@@ -241,6 +241,7 @@ function createSequenceElement(node, options = {}) {
 
             return {
                 type: "form",
+                schemaId: attrs?.activeSchemaId || null,
                 data: formData,
                 attrs,
             };

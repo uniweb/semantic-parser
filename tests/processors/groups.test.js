@@ -266,6 +266,48 @@ describe("processGroups", () => {
         expect(result.items[1].title).toBe("Detail B");
     });
 
+    describe("form (FormBlock routing)", () => {
+        test("routes form data to data[schemaId] when schemaId is present", () => {
+            const sequence = [
+                { type: "heading", level: 1, text: "Hero", children: [], attrs: { level: 1 } },
+                {
+                    type: "form",
+                    schemaId: "stats",
+                    data: [{ number: "42", text: "Users" }],
+                    attrs: {},
+                },
+            ];
+            const result = processGroups(sequence);
+            expect(result.data.stats).toEqual([{ number: "42", text: "Users" }]);
+            expect(result.data.form).toBeUndefined();
+        });
+
+        test("falls back to data.form when schemaId is missing (legacy content)", () => {
+            const sequence = [
+                { type: "heading", level: 1, text: "Hero", children: [], attrs: { level: 1 } },
+                {
+                    type: "form",
+                    schemaId: null,
+                    data: { for: "scholar" },
+                    attrs: {},
+                },
+            ];
+            const result = processGroups(sequence);
+            expect(result.data.form).toEqual({ for: "scholar" });
+        });
+
+        test("multiple FormBlocks with different schemaIds land at distinct keys", () => {
+            const sequence = [
+                { type: "heading", level: 1, text: "Hero", children: [], attrs: { level: 1 } },
+                { type: "form", schemaId: "stats", data: [{ number: "10" }], attrs: {} },
+                { type: "form", schemaId: "side-content", data: { for: "news" }, attrs: {} },
+            ];
+            const result = processGroups(sequence);
+            expect(result.data.stats).toEqual([{ number: "10" }]);
+            expect(result.data["side-content"]).toEqual({ for: "news" });
+        });
+    });
+
     test("child_block does not appear in images, icons, or links", () => {
         const sequence = [
             { type: "heading", level: 1, text: "Title", children: [], attrs: { level: 1 } },

@@ -375,8 +375,16 @@ function processGroupContent(elements) {
                     break;
 
                 case "form":
-                    // Map FormBlock to data.form
-                    body.data.form = element.data || element.attrs;
+                    // Route FormBlock data by the schema id it targets, so it
+                    // shares a namespace with tagged markdown data blocks
+                    // (```yaml:<id>``` also lands at data[<id>]). When no
+                    // schemaId is present (legacy content), fall back to the
+                    // literal key "form" — eventual deprecation.
+                    {
+                        const payload = element.data || element.attrs;
+                        const key = element.schemaId || "form";
+                        body.data[key] = payload;
+                    }
                     break;
 
                 case "card-group":

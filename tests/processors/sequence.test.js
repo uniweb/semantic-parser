@@ -608,4 +608,55 @@ describe("processSequence", () => {
     });
   });
 
+  describe("FormBlock", () => {
+    test("parses object data and carries schemaId", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "FormBlock",
+            attrs: {
+              activeSchemaId: "stats",
+              data: [{ number: "42", text: "Users" }],
+            },
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe("form");
+      expect(result[0].schemaId).toBe("stats");
+      expect(result[0].data).toEqual([{ number: "42", text: "Users" }]);
+    });
+
+    test("parses stringified JSON data", () => {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "FormBlock",
+            attrs: {
+              activeSchemaId: "side-content",
+              data: '{"for":"scholar","department":"CS"}',
+            },
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result[0].schemaId).toBe("side-content");
+      expect(result[0].data).toEqual({ for: "scholar", department: "CS" });
+    });
+
+    test("emits schemaId=null when activeSchemaId missing", () => {
+      const doc = {
+        type: "doc",
+        content: [{ type: "FormBlock", attrs: { data: {} } }],
+      };
+      const result = processSequence(doc);
+      expect(result[0].schemaId).toBeNull();
+    });
+  });
+
 });

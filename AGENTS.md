@@ -95,11 +95,14 @@ The `data` object holds all structured content:
 data: {
   "nav-links": [...],     // From ```yaml:nav-links
   "config": {...},        // From ```yaml:config
-  "form": {...},          // From FormBlock editor widget or ```yaml:form
+  "stats": [...],         // From FormBlock (activeSchemaId='stats') or ```yaml:stats
   "person": [...],        // From card-group with cardType="person"
   "event": [...]          // From card-group with cardType="event"
 }
 ```
+
+FormBlock data is routed to `data[activeSchemaId]`. A legacy
+FormBlock without a `schemaId` still lands at `data.form`.
 
 ### Main Content Identification
 
@@ -121,7 +124,7 @@ The sequence processor identifies several special element types by inspecting pa
 
 Editor-specific nodes are mapped to standard entities:
 - `button` node → `links[]` with `role: "button"` and `variant` attribute
-- `FormBlock` → `data.form`
+- `FormBlock` → `data[activeSchemaId]` (fallback: `data.form` when no schemaId)
 - `card-group` → `data[cardType]` arrays (e.g., `data.person`, `data.event`)
 - `document-group` → `links[]` with `role: "document"` and `download: true`
 
