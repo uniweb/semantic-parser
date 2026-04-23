@@ -167,6 +167,17 @@ function createSequenceElement(node, options = {}) {
                 type: "inset",
                 refId: attrs.refId,
             };
+
+        case "math_display":
+            // Block-level math. The mathml string is pre-compiled at parse
+            // time (content-reader) and renders natively via kit's HTML
+            // renderers. Foundations can read el.mathml from content.sequence.
+            return {
+                type: "math_display",
+                latex: node.attrs?.latex || "",
+                mathml: node.attrs?.mathml || "",
+                attrs,
+            };
         case "ImageBlock":
             return {
                 type: "image",
@@ -381,6 +392,12 @@ function getTextContent(content, options = {}) {
                 }
 
                 return prev + styledText;
+            } else if (type === "math_inline") {
+                // Pre-compiled MathML string rides straight into the
+                // paragraph's HTML and reaches kit's Text via
+                // dangerouslySetInnerHTML. The HTML5 parser handles <math>
+                // as MathML natively — zero runtime math library needed.
+                return prev + (curr.attrs?.mathml || "");
             } else if (type === "hardBreak") {
                 return prev + "<br>";
             } else {

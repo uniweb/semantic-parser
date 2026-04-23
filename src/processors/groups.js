@@ -5,7 +5,7 @@
  */
 function flattenGroup(group) {
     if (!group) return null;
-    return {
+    const flat = {
         title: group.header.title || '',
         pretitle: group.header.pretitle || '',
         subtitle: group.header.subtitle || '',
@@ -21,6 +21,11 @@ function flattenGroup(group) {
         quotes: group.body.quotes || [],
         headings: group.body.headings || [],
     };
+    // Only attach rare collections when present so we don't pay the cost
+    // on every page (math is <1% of content in practice; authors who need
+    // ordering should use content.sequence anyway).
+    if (group.body.math && group.body.math.length) flat.math = group.body.math;
+    return flat;
 }
 
 /**
@@ -240,6 +245,9 @@ function processGroupContent(elements) {
         data: {},
         quotes: [],
         headings: [],
+        // `math` is lazily added in the math_display case when encountered —
+        // avoids allocating an empty array on every group (math is rare; most
+        // consumers that care about ordering should use content.sequence).
     };
 
     const metadata = {
@@ -367,6 +375,20 @@ function processGroupContent(elements) {
                     body.snippets.push({
                         language: element.attrs?.language || '',
                         code: typeof element.text === 'string' ? element.text : '',
+                    });
+                    break;
+
+                case "math_display":
+                    // Block-level math from $$...$$ on its own line or ```math
+                    // fence. The mathml string is pre-compiled at parse time;
+                    // foundations render it by setting dangerouslySetInnerHTML
+                    // on the mathml field. For ordered rendering alongside
+                    // paragraphs, prefer `content.sequence` — this flat
+                    // collection is convenience sugar when order doesn't
+                    // matter. Allocate lazily so pages without math pay nothing.
+                    (body.math ||= []).push({
+                        latex: element.latex || '',
+                        mathml: element.mathml || '',
                     });
                     break;
 
