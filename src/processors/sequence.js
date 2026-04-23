@@ -172,8 +172,11 @@ function createSequenceElement(node, options = {}) {
             // Block-level math. The mathml string is pre-compiled at parse
             // time (content-reader) and renders natively via kit's HTML
             // renderers. Foundations can read el.mathml from content.sequence.
+            // The optional id enables numbered cross-references via
+            // @uniweb/scholar/math's <EquationRef>.
             return {
                 type: "math_display",
+                id: node.attrs?.id || null,
                 latex: node.attrs?.latex || "",
                 mathml: node.attrs?.mathml || "",
                 attrs,

@@ -382,11 +382,14 @@ function processGroupContent(elements) {
                     // Block-level math from $$...$$ on its own line or ```math
                     // fence. The mathml string is pre-compiled at parse time;
                     // foundations render it by setting dangerouslySetInnerHTML
-                    // on the mathml field. For ordered rendering alongside
-                    // paragraphs, prefer `content.sequence` — this flat
-                    // collection is convenience sugar when order doesn't
-                    // matter. Allocate lazily so pages without math pay nothing.
+                    // on the mathml field. The optional id enables numbered
+                    // cross-references (see @uniweb/scholar/math).
+                    // For ordered rendering alongside paragraphs, prefer
+                    // `content.sequence` — this flat collection is convenience
+                    // sugar when order doesn't matter. Allocate lazily so
+                    // pages without math pay nothing.
                     (body.math ||= []).push({
+                        id: element.id || null,
                         latex: element.latex || '',
                         mathml: element.mathml || '',
                     });
