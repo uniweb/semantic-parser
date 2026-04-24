@@ -187,10 +187,13 @@ function createSequenceElement(node, options = {}) {
                 attrs: parseImgBlock(attrs),
             };
         case "image":
-            // Standard ProseMirror image node - wrap attrs like ImageBlock
+            // Standard ProseMirror image node - resolve attrs the same way as
+            // ImageBlock so info.identifier lands as a CDN URL. CLI-deployed
+            // content uses this node type; without parseImgBlock the url
+            // wouldn't be populated and components render an empty slot.
             return {
                 type: "image",
-                attrs: attrs || {},
+                attrs: parseImgBlock(attrs || {}),
             };
         case "Video":
             return {
