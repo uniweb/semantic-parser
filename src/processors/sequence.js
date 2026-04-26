@@ -639,16 +639,24 @@ function parseVideoBlock(itemAttrs) {
 function stripTags(htmlString) {
     if (!htmlString || typeof htmlString !== "string") return "";
 
-    // Remove HTML tags using regular expression
+    // Remove HTML tags using regular expression.
     const plainString = htmlString.replace(/<[^>]*>/g, "");
 
-    // Decode HTML entities
-    const decodedString = new DOMParser().parseFromString(
-        plainString,
-        "text/html"
-    ).body.textContent;
-
-    return decodedString;
+    // Decode the HTML entity subset citestyle / content-reader / kit emit.
+    // The previous DOMParser-based path covered every entity in the spec,
+    // but DOMParser is browser-only and crashes Node SSR (which the
+    // unipress compile pipeline runs in). The regex below covers the
+    // entities that actually appear in this codebase's emitted HTML.
+    return plainString
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&apos;/g, "'")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+        .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
 function isLink(item) {
