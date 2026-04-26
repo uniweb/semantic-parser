@@ -404,6 +404,17 @@ function getTextContent(content, options = {}) {
                 // dangerouslySetInnerHTML. The HTML5 parser handles <math>
                 // as MathML natively — zero runtime math library needed.
                 return prev + (curr.attrs?.mathml || "");
+            } else if (type === "inset_placeholder") {
+                // Inline inset (e.g. a `[@key]{...}` cite). Emit a marker
+                // tag the renderer can split on; the actual inset is
+                // rendered via React from `block.getInset(refId)`. The
+                // paragraph's `children` array also carries an ordered
+                // record of inset entries (see processInlineElements) so
+                // consumers that don't want to substring-walk the HTML
+                // have an alternative path.
+                const refId = curr.attrs?.refId;
+                if (!refId) return prev;
+                return prev + `<uniweb-inset data-ref-id="${refId}"></uniweb-inset>`;
             } else if (type === "hardBreak") {
                 return prev + "<br>";
             } else {
@@ -425,8 +436,18 @@ function processInlineElements(content) {
                 type: "icon",
                 attrs: parseUniwebIcon(item.attrs),
             });
-        } else if (item.type === "math-inline") {
+        } else if (item.type === "math-inline" || item.type === "math_inline") {
             items.push(item);
+        } else if (item.type === "inset_placeholder") {
+            // Inline inset (e.g., a `[@key]{...}` cite or a mid-prose
+            // visual inset). The Render path looks the actual block up
+            // via block.getInset(refId); we just carry the marker here so
+            // its position in the text flow is preserved.
+            items.push({
+                type: "inset",
+                refId: item.attrs?.refId,
+                embedKind: item.attrs?.embedKind || "visual",
+            });
         } else if (item.type === "text" && item.marks) {
             // Extract links from text nodes with link marks
             const linkMark = item.marks.find((m) => m.type === "link");
