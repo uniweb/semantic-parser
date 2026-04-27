@@ -572,6 +572,8 @@ function parseImgBlock(itemAttrs) {
         theme,
         role,
         credit = "",
+        id, // {#fig-id} cross-reference label — preserved so Press
+            // adapters can emit \label{id} (LaTeX) / <id> (Typst).
     } = itemAttrs;
 
     let { contentType, viewType, contentId, identifier } = imgInfo || {};
@@ -605,6 +607,7 @@ function parseImgBlock(itemAttrs) {
         theme,
         role,
         credit,
+        id: id || undefined,
     };
 }
 
