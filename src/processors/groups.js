@@ -378,7 +378,7 @@ function processGroupContent(elements) {
                     });
                     break;
 
-                case "math_display":
+                case "math":
                     // Block-level math from $$...$$ on its own line or ```math
                     // fence. The mathml string is pre-compiled at parse time;
                     // foundations render it by setting dangerouslySetInnerHTML
@@ -388,6 +388,11 @@ function processGroupContent(elements) {
                     // `content.sequence` — this flat collection is convenience
                     // sugar when order doesn't matter. Allocate lazily so
                     // pages without math pay nothing.
+                    //
+                    // Inline math doesn't reach the groups walker — it's
+                    // wrapped inside paragraph HTML strings — so checking
+                    // the `display` flag is unnecessary here. If that ever
+                    // changes, gate this branch on `element.display === true`.
                     (body.math ||= []).push({
                         id: element.id || null,
                         latex: element.latex || '',

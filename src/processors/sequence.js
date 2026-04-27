@@ -11,6 +11,23 @@ import { parse as parseYaml } from "yaml";
  * @param {Object} attrs - Code block attributes (language, tag, data)
  * @returns {*} Parsed data or raw text
  */
+/**
+ * HTML-attribute encoding for values placed inside double-quoted
+ * attributes. Backslashes and braces (common in LaTeX) pass through
+ * unchanged; only the four characters that are unsafe in this context
+ * need replacing.
+ *
+ * @param {string} s
+ * @returns {string}
+ */
+function escapeAttr(s) {
+    return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
 function getCodeBlockData(text, attrs) {
     const { language, tag, data } = attrs || {};
 
@@ -174,8 +191,15 @@ function createSequenceElement(node, options = {}) {
             // renderers. Foundations can read el.mathml from content.sequence.
             // The optional id enables numbered cross-references via
             // @uniweb/scholar/math's <EquationRef>.
+            //
+            // Element type is `math` with `display: true`. Inline math
+            // (math_inline inside paragraphs) reaches downstream as the
+            // same `math` IR node with `display: false`. PM-schema names
+            // (math_display / math_inline) stay put — they're the
+            // content-writer roundtrip contract.
             return {
-                type: "math_display",
+                type: "math",
+                display: true,
                 id: node.attrs?.id || null,
                 latex: node.attrs?.latex || "",
                 mathml: node.attrs?.mathml || "",
@@ -399,11 +423,21 @@ function getTextContent(content, options = {}) {
 
                 return prev + styledText;
             } else if (type === "math_inline") {
-                // Pre-compiled MathML string rides straight into the
-                // paragraph's HTML and reaches kit's Text via
-                // dangerouslySetInnerHTML. The HTML5 parser handles <math>
-                // as MathML natively — zero runtime math library needed.
-                return prev + (curr.attrs?.mathml || "");
+                // Inline math is a non-text inline atom. The mathml is
+                // pre-compiled at parse time (content-reader) and rides
+                // inline so kit's Text (dangerouslySetInnerHTML) renders
+                // it natively in the browser. Wrapping in a span carries
+                // the LaTeX source as `data-latex` so Press's print
+                // adapters (typst, latex, etc.) have a structured handle
+                // when their Paragraph builder walks the styled string.
+                // The wrapper is visually invisible; the inner <math>
+                // still renders as MathML in the browser.
+                const latex = escapeAttr(curr.attrs?.latex || "");
+                const mathml = curr.attrs?.mathml || "";
+                return (
+                    prev +
+                    `<span data-type="math" data-latex="${latex}" data-display="false">${mathml}</span>`
+                );
             } else if (type === "inset_placeholder") {
                 // Inline inset (e.g. a `[@key]{...}` cite). Emit a marker
                 // tag the renderer can split on; the actual inset is
