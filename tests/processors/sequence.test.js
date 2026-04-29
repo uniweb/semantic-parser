@@ -112,13 +112,15 @@ describe("processSequence", () => {
     };
 
     const result = processSequence(doc);
-    expect(result[0]).toEqual({
-      type: "image",
-      attrs: {
-        src: "test.jpg",
-        alt: "Test",
-        role: "background",
-      },
+    // Standard ProseMirror image nodes are routed through parseImgBlock
+    // so editor-deployed and CLI-deployed content share one normalized
+    // shape. `src` is mapped to `url` (the field consumed by kit's
+    // <Image>); the meaningful inputs (alt, role) are passed through.
+    expect(result[0].type).toBe("image");
+    expect(result[0].attrs).toMatchObject({
+      url: "test.jpg",
+      alt: "Test",
+      role: "background",
     });
   });
 

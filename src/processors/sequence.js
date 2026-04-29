@@ -600,6 +600,7 @@ function parseImgBlock(itemAttrs) {
         direction,
         filter,
         alt = "",
+        src,
         url,
         href = "",
         target = "",
@@ -620,8 +621,15 @@ function parseImgBlock(itemAttrs) {
 
     caption = stripTags(caption);
 
+    // Standard ProseMirror `image` nodes use `src`; the custom
+    // `ImageBlock` node uses `url`. Honor either so callers don't have
+    // to pre-normalize. `identifier` (CDN-resolvable asset id) wins
+    // when present so an editor-deployed image with a stale `src`
+    // doesn't shadow the CDN copy.
     if (identifier) {
         url = makeAssetUrl(imgInfo);
+    } else if (!url && src) {
+        url = src;
     }
 
     return {
