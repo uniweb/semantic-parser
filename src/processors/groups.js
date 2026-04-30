@@ -480,6 +480,18 @@ function processInlineElements(children, body) {
     children.forEach((item) => {
         if (item.type === "icon") {
             body.icons.push(item.attrs);
+        } else if (item.type === "image") {
+            // Inline image inside a paragraph (e.g. `![alt](url)` next to
+            // text or icons that didn't qualify for block-level hoisting
+            // in content-reader). Mirror the top-level partition:
+            // icon-role goes to icons[], everything else to images[].
+            // Without this branch, inline images vanish from body.images
+            // and components reading `item.images?.[0]` see nothing.
+            if (item.attrs?.role === "icon") {
+                body.icons.push(item.attrs);
+            } else {
+                body.images.push(item.attrs);
+            }
         } else if (item.type === "link") {
             // Handle inline links extracted from paragraph text nodes
             body.links.push(item.attrs);
