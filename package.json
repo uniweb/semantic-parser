@@ -8,9 +8,9 @@
         ".": "./src/index.js"
     },
     "scripts": {
-        "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-        "test-report": "NODE_OPTIONS=--experimental-vm-modules jest --json > test-results.json 2>&1",
-        "test:groups": "NODE_OPTIONS=--experimental-vm-modules jest tests/processors/groups.test.js"
+        "test": "vitest run",
+        "test-report": "vitest run --reporter=json --outputFile=test-results.json",
+        "test:groups": "vitest run tests/processors/groups.test.js"
     },
     "keywords": [
         "prosemirror",
@@ -22,7 +22,7 @@
     "author": "Proximify Inc.",
     "license": "GPL-3.0-or-later",
     "devDependencies": {
-        "jest": "^29.7.0"
+        "vitest": "^2.0.0"
     },
     "repository": {
         "type": "git",
