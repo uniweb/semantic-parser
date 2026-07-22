@@ -318,10 +318,80 @@ function createSequenceElement(node, options = {}) {
     }
 }
 
+// Extensions that make a link a download rather than a navigation.
+const FILE_LINK_EXTENSIONS = [
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+    "jpg", "jpeg", "png", "webp", "gif", "svg",
+    "mp4", "mp3", "wav", "mov", "zip",
+];
+
+/**
+ * Find a node's link mark, if it carries one.
+ */
+function getLinkMark(node) {
+    return (node?.marks || []).find((mark) => mark.type === "link") || null;
+}
+
+/**
+ * Whether two nodes belong to the same link.
+ *
+ * Marked-up text inside a label (`[read *this*](/x)`) arrives as several
+ * adjacent nodes that each carry the same link mark. They are one link and
+ * must produce one anchor, not one anchor apiece.
+ */
+function sameLink(a, b) {
+    if (!a || !b) return false;
+    return JSON.stringify(a.attrs || {}) === JSON.stringify(b.attrs || {});
+}
+
+/**
+ * Wrap already-styled inline content in an anchor.
+ */
+function wrapLink(inner, linkMark) {
+    const href = linkMark.attrs.href;
+    const target = linkMark.attrs.target || "_self";
+    const extension = href.split(".").pop()?.toLowerCase();
+    const isFileLink = FILE_LINK_EXTENSIONS.includes(extension);
+
+    return `<a href="${href}" target="${target}"${isFileLink ? " download" : ""}>${inner}</a>`;
+}
+
 function getTextContent(content, options = {}) {
     if (!content) return "";
 
-    return content
+    // Group consecutive nodes that share a link mark, so one link yields one
+    // anchor however many nodes its label tokenized into. Everything else is
+    // a group of one.
+    const groups = [];
+    for (const node of content) {
+        const link = node?.type === "text" ? getLinkMark(node) : null;
+        const last = groups[groups.length - 1];
+
+        if (link && last?.link && sameLink(last.link, link)) {
+            last.nodes.push(node);
+        } else {
+            groups.push({ link, nodes: [node] });
+        }
+    }
+
+    return groups
+        .reduce((prev, group) => {
+            const inner = group.nodes.reduce(
+                (acc, node) => acc + renderInlineNode(node),
+                "",
+            );
+            if (!inner && !group.link) return prev;
+            return prev + (group.link ? wrapLink(inner, group.link) : inner);
+        }, "")
+        .trim();
+}
+
+/**
+ * Render one inline node to HTML, applying every mark EXCEPT link — the
+ * anchor is applied per group by getTextContent, since it may span nodes.
+ */
+function renderInlineNode(curr) {
+    return [curr]
         .reduce((prev, curr) => {
             const { type, marks = [], text } = curr;
 
@@ -376,6 +446,13 @@ function getTextContent(content, options = {}) {
                     styledText = `<span${attrString}>${styledText}</span>`;
                 }
 
+                // code — a bare <code>, styled by the theme rather than here.
+                // The mark was previously dropped, so inline code rendered as
+                // ordinary prose with no way for a foundation to tell it apart.
+                if (marks.some((mark) => mark.type === "code")) {
+                    styledText = `<code>${styledText}</code>`;
+                }
+
                 // bold
                 if (marks.some((mark) => mark.type === "bold")) {
                     styledText = `<strong>${styledText}</strong>`;
@@ -386,40 +463,9 @@ function getTextContent(content, options = {}) {
                     styledText = `<em>${styledText}</em>`;
                 }
 
-                // link (outermost)
-                if (marks.some((mark) => mark.type === "link")) {
-                    const linkMark = marks.find((mark) => mark.type === "link");
-                    const href = linkMark.attrs.href;
-                    const target = linkMark.attrs.target || "_self";
-
-                    // Check if it's a file link (add download attribute)
-                    const fileExtensions = [
-                        "pdf",
-                        "doc",
-                        "docx",
-                        "xls",
-                        "xlsx",
-                        "ppt",
-                        "pptx",
-                        "jpg",
-                        "jpeg",
-                        "png",
-                        "webp",
-                        "gif",
-                        "svg",
-                        "mp4",
-                        "mp3",
-                        "wav",
-                        "mov",
-                        "zip",
-                    ];
-                    const extension = href.split(".").pop()?.toLowerCase();
-                    const isFileLink = fileExtensions.includes(extension);
-
-                    styledText = `<a href="${href}" target="${target}"${
-                        isFileLink ? " download" : ""
-                    }>${styledText}</a>`;
-                }
+                // The link mark is deliberately NOT applied here — it is the
+                // outermost wrapper and may span several nodes, so
+                // getTextContent applies it once per group.
 
                 return prev + styledText;
             } else if (type === "math_inline") {
@@ -455,8 +501,7 @@ function getTextContent(content, options = {}) {
                 // console.warn(`unhandled text content type: ${type}`, curr);
                 return prev;
             }
-        }, "")
-        .trim();
+        }, "");
 }
 
 function processInlineElements(content) {
