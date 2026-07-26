@@ -309,3 +309,29 @@ describe('buildDoc', () => {
     })
   })
 })
+
+describe('icon identity crosses to the editor intact', () => {
+  test('the family rides inside name as family:id, with no library attr', () => {
+    // The editor's UniwebIcon declares { name, svg, url, size, color,
+    // preserveColors, info } and NO `library`. ProseMirror silently drops
+    // undeclared attrs on fromJSON, so emitting a separate `library` lost the
+    // family without a trace — on the path that builds starter content for
+    // every new section.
+    const doc = buildDoc({ icons: [{ library: 'lucide', name: 'star' }] })
+    const icon = doc.content.find(n => n.type === 'UniwebIcon')
+    expect(icon.attrs.name).toBe('lucide:star')
+    expect(icon.attrs).not.toHaveProperty('library')
+  })
+
+  test('a name with no family is emitted unchanged', () => {
+    const doc = buildDoc({ icons: [{ name: 'star' }] })
+    expect(doc.content.find(n => n.type === 'UniwebIcon').attrs.name).toBe('star')
+  })
+
+  test('parseContent(buildDoc(x)) still round-trips to the separate form', () => {
+    // The documented invariant of this builder, and what <Icon library name />
+    // consumes downstream.
+    const parsed = parseContent(buildDoc({ icons: [{ library: 'lucide', name: 'star' }] }))
+    expect(parsed.icons).toEqual([{ library: 'lucide', name: 'star' }])
+  })
+})

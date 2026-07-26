@@ -57,11 +57,16 @@ function imageBlock({ src, alt = '', caption = '', direction, role, width, heigh
 }
 
 function iconNode({ src, svg, library, name, size, color }) {
-  // UniwebIcon supports multiple source types
+  // UniwebIcon supports multiple source types.
+  //
+  // The family rides INSIDE `name` as `family:id`. The editor's node declares
+  // `{ name, svg, url, size, color, preserveColors, info }` and no `library`,
+  // and ProseMirror silently drops undeclared attrs on `fromJSON` — so emitting
+  // a separate `library` lost the family without a trace, on the path that
+  // builds starter content for every new section.
   const attrs = {}
   if (svg || src) attrs.svg = svg || src
-  if (library) attrs.library = library
-  if (name) attrs.name = name
+  if (name) attrs.name = library ? `${library}:${name}` : name
   if (size) attrs.size = size
   if (color) attrs.color = color
   return { type: 'UniwebIcon', attrs }

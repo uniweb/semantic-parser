@@ -625,8 +625,18 @@ function parseUniwebIcon(itemAttrs) {
     if (preserveColors) icon.preserveColors = preserveColors;
     if (href) icon.href = href;
     if (target) icon.target = target;
-    if (library) icon.library = library;
-    if (name) icon.name = name;
+    // The editor carries the family inside `name` as `family:id`; the markdown
+    // pipeline carries them separately. Normalize to the separate form, which
+    // is what `<Icon library name />` consumes.
+    let resolvedLibrary = library;
+    let resolvedName = name;
+    if (!resolvedLibrary && typeof name === "string" && name.includes(":")) {
+        const [family, ...rest] = name.split(":");
+        resolvedLibrary = family;
+        resolvedName = rest.join(":");
+    }
+    if (resolvedLibrary) icon.library = resolvedLibrary;
+    if (resolvedName) icon.name = resolvedName;
 
     return icon;
 }
