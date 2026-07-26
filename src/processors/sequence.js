@@ -154,6 +154,20 @@ function createSequenceElement(node, options = {}) {
                 attrs,
             };
 
+        case "inset_block": {
+            // The block form of an inset: a component reference that carries
+            // real block content. Its children are processed like a
+            // blockquote's — the default branch would flatten them to a text
+            // string, which loses the author's prose entirely.
+            const { component, ...params } = attrs || {};
+            return {
+                type: "inset_block",
+                component,
+                params,
+                children: processSequence({ content }),
+            };
+        }
+
         case "dataBlock":
             // Pre-parsed structured data from content-reader
             return {

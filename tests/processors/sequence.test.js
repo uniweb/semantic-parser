@@ -662,3 +662,36 @@ describe("processSequence", () => {
   });
 
 });
+
+describe('inset_block — a component reference with block content', () => {
+  test('children are processed, not flattened to a string', () => {
+    // The default branch produced { type: 'inset_block', content: '' } — the
+    // body lost entirely, so a container rendered as nothing on the page.
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'inset_block',
+        attrs: { component: 'Alert', type: 'warning' },
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Be careful.' }] },
+          { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'one' }] }] }] },
+        ],
+      }],
+    }
+
+    const el = processSequence({ content: doc.content })[0]
+    expect(el.type).toBe('inset_block')
+    expect(el.component).toBe('Alert')
+    expect(el.params).toEqual({ type: 'warning' })
+    expect(el.children.map(c => c.type)).toEqual(['paragraph', 'list'])
+  })
+
+  test('marks inside the body survive', () => {
+    const node = {
+      type: 'inset_block',
+      attrs: { component: 'Details' },
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'bold', marks: [{ type: 'bold' }] }] }],
+    }
+    expect(processSequence({ content: [node] })[0].children[0].text).toContain('<strong>')
+  })
+})
