@@ -695,3 +695,40 @@ describe('inset_block — a component reference with block content', () => {
     expect(processSequence({ content: [node] })[0].children[0].text).toContain('<strong>')
   })
 })
+
+describe("icon nodes carry an attrs OBJECT", () => {
+  // Regression: parseIconBlock used to return the bare `svg` string. kit renders
+  // a sequence icon with `<Icon {...element.attrs} />` (styled/Prose), and
+  // spreading a string yields indexed character props — {0:'<', 1:'s', …} — so
+  // the icon rendered as nothing, with no error, because `attrs.svg` on a string
+  // is undefined rather than a throw.
+  const iconEntry = (attrs) =>
+    processSequence({ type: "doc", content: [{ type: "Icon", attrs }] }).find(
+      (e) => e.type === "icon"
+    );
+
+  test("an Icon node yields an object, never a string", () => {
+    const entry = iconEntry({ svg: "<svg id='x'/>", theme: "dark" });
+    expect(typeof entry.attrs).toBe("object");
+    expect(entry.attrs).toEqual({ svg: "<svg id='x'/>", theme: "dark" });
+  });
+
+  test("spreading the attrs gives named props, not characters", () => {
+    // This is the shape kit actually consumes.
+    const spread = { ...iconEntry({ svg: "<svg/>" }).attrs };
+    expect(spread).toEqual({ svg: "<svg/>" });
+    expect(spread[0]).toBeUndefined();
+  });
+
+  test("an Icon node with no svg yields an empty object, not undefined", () => {
+    expect(iconEntry({})).toEqual({ type: "icon", attrs: {} });
+  });
+
+  test("a UniwebIcon still resolves family:id into library + name", () => {
+    const entry = processSequence({
+      type: "doc",
+      content: [{ type: "UniwebIcon", attrs: { name: "lu:house" } }],
+    }).find((e) => e.type === "icon");
+    expect(entry.attrs).toEqual({ library: "lu", name: "house" });
+  });
+});

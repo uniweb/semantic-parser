@@ -655,10 +655,27 @@ function parseUniwebIcon(itemAttrs) {
     return icon;
 }
 
+// The editor's `Icon` node carries an inline SVG blob plus a theme. Return an
+// ATTRS OBJECT, like every other parser in this file — not the bare `svg`
+// string it used to return.
+//
+// The string form was a live bug, not just an inconsistency: kit renders a
+// sequence icon with `<Icon {...element.attrs} />` (styled/Prose/index.jsx),
+// and spreading a string yields indexed character props — `{0:'<', 1:'s', …}`
+// — so the icon rendered as nothing and React saw a wall of unknown props. It
+// failed silently because `attrs.svg` on a string is `undefined`, never an
+// error.
+//
+// Keys are omitted when absent so a consumer can distinguish "not provided"
+// from "empty", matching parseUniwebIcon's shape above.
 function parseIconBlock(itemAttrs) {
-    let { svg } = itemAttrs;
+    const { svg, theme } = itemAttrs || {};
 
-    return svg;
+    const icon = {};
+    if (svg) icon.svg = svg;
+    if (theme) icon.theme = theme;
+
+    return icon;
 }
 
 function parseImgBlock(itemAttrs) {
