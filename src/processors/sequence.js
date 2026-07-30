@@ -168,6 +168,26 @@ function createSequenceElement(node, options = {}) {
             };
         }
 
+        case "concept_block": {
+            // A tagged prose fence (```md:faq). Its body is real block content,
+            // recursed like a container's — the default branch would flatten it
+            // to a text string and lose the author's prose.
+            //
+            // No markdown is parsed here and none may ever be: this package
+            // depends on `yaml` alone, and reaching for a markdown parser would
+            // put content-reader inside the runtime. The reader already built
+            // this node; the job here is only to WALK it.
+            //
+            // `options` rides along, unlike the `inset_block` and `blockquote`
+            // cases above, so nested content is sequenced under the same
+            // options as its parent.
+            return {
+                type: "concept_block",
+                tag: attrs?.tag,
+                children: processSequence({ content }, options),
+            };
+        }
+
         case "dataBlock":
             // Pre-parsed structured data from content-reader
             return {

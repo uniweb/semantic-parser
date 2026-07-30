@@ -30,8 +30,27 @@ function flattenGroup(group) {
 
 /**
  * Transform a sequence into content groups with semantic structure
+ *
+ * `options.alwaysItems` makes every group an ITEM: it turns off the two rules
+ * that otherwise collapse a short document into a titled main block —
+ * title promotion (`identifyMainContent`) and same-level heading merge
+ * (`readHeadingGroup`'s Case 3). Used for a tagged concept block, whose shape is
+ * fixed by its fence rather than by what it happens to contain.
+ *
+ * It names a GROUPING BEHAVIOUR, not a concept. Nothing here knows what `faq` or
+ * `warning` mean, and nothing should: a framework-side registry of concept names
+ * is the failure the whole design avoids.
+ *
+ * DEFAULT OFF, and that matters more than it looks. This parser runs JIT — at
+ * render time and at editor time — and nothing derived is ever stored, so a
+ * change to a grouping rule retroactively re-reads every document that already
+ * exists. Leaking these suppressions into the default path would silently
+ * reshape every section body ever authored. `tests/grouping-default-path.test.js`
+ * pins the default against that.
+ *
  * @param {Array} sequence Flat sequence of elements
  * @param {Object} options Parsing options
+ * @param {boolean} [options.alwaysItems] Every group is an item; no main block
  * @returns {Object} Flat content object with items array
  */
 function processGroups(sequence, options = {}) {
@@ -56,7 +75,7 @@ function processGroups(sequence, options = {}) {
         };
     }
 
-    const groups = splitBySlices(sequence);
+    const groups = splitBySlices(sequence, options);
 
     // Process each group's structure (still nested internally)
     const processedGroups = groups.map((group) => processGroupContent(group));
@@ -65,7 +84,12 @@ function processGroups(sequence, options = {}) {
     let mainGroup = null;
     let itemGroups = [];
 
-    const shouldBeMain = identifyMainContent(processedGroups);
+    // Suppression 1 of 2: title promotion. Without it a lone heading+body pair
+    // is the whole "main" block and yields NO items — the single-question FAQ,
+    // and every callout, would arrive empty.
+    const shouldBeMain = options.alwaysItems
+        ? false
+        : identifyMainContent(processedGroups);
     if (shouldBeMain) {
         mainGroup = processedGroups[0];
         itemGroups = processedGroups.slice(1);
@@ -99,7 +123,7 @@ function processGroups(sequence, options = {}) {
     };
 }
 
-function splitBySlices(sequence) {
+function splitBySlices(sequence, options = {}) {
     const groups = [];
     let currentGroup = [];
 
@@ -132,7 +156,7 @@ function splitBySlices(sequence) {
 
             // Consume the entire semantic heading block (Title + Subtitles)
             // We reuse your smart readHeadingGroup logic here!
-            const headingBlock = readHeadingGroup(sequence, i);
+            const headingBlock = readHeadingGroup(sequence, i, options);
             currentGroup.push(...headingBlock);
 
             // Advance the index by the number of headings consumed
@@ -175,7 +199,7 @@ function isBannerImage(sequence, i) {
     );
 }
 
-function readHeadingGroup(sequence, startIdx) {
+function readHeadingGroup(sequence, startIdx, options = {}) {
     const elements = [sequence[startIdx]];
     let hasGoneDeeper = false;
 
@@ -211,7 +235,18 @@ function readHeadingGroup(sequence, startIdx) {
         // same-level headings are new sections, not continuations.
         // e.g. H1 -> H1 → merged into title array
         // but H1 -> H2 -> H2 → second H2 starts a new group (items)
-        if (element.level === previousElement.level && !hasGoneDeeper) {
+        //
+        // Suppression 2 of 2 (`alwaysItems`): in a tagged concept block two
+        // same-level headings are two ITEMS, not one heading split across
+        // visual lines. Merging them is why bodiless headings collapse into a
+        // single group carrying a title ARRAY — and no amount of suppressing
+        // title promotion downstream can split what was never split here, which
+        // is what makes this the second half of a fix that looks like one line.
+        if (
+            element.level === previousElement.level &&
+            !hasGoneDeeper &&
+            !options.alwaysItems
+        ) {
             elements.push(element);
             continue;
         }
@@ -365,6 +400,32 @@ function processGroupContent(elements) {
                     const quoteContent = processGroupContent(element.children);
                     body.quotes.push(quoteContent.body);
                     break;
+
+                case "concept_block": {
+                    // A tagged prose fence lands under its tag, sharing the
+                    // namespace tagged DATA blocks use (```yaml:nav also lands
+                    // at data[nav]) — one place a component looks, whichever
+                    // form the author reached for.
+                    //
+                    // Both views, because two consumers need different ones and
+                    // `parseContent` computes them in one pass anyway. `items`
+                    // is what an accordion or a step list renders. `sequence` is
+                    // what anything rendering a concept it does not RECOGNIZE
+                    // has to use: `items` is a bucketed flattening that discards
+                    // ordering, and it collapses to [] exactly where `sequence`
+                    // survives — two bodiless headings give items 0, sequence 2.
+                    //
+                    // `alwaysItems` is hard-coded rather than inherited, and
+                    // that is the scoping: a concept block's shape is fixed by
+                    // its fence no matter how the surrounding document was
+                    // parsed, and the suppressions never reach the default path.
+                    const children = element.children || [];
+                    body.data[element.tag] = {
+                        items: processGroups(children, { alwaysItems: true }).items,
+                        sequence: children,
+                    };
+                    break;
+                }
 
                 case "dataBlock":
                     // Pre-parsed structured data from content-reader
