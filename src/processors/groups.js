@@ -492,6 +492,11 @@ function processInlineElements(children, body) {
             } else {
                 body.images.push(item.attrs);
             }
+        } else if (item.type === "video") {
+            // Mirrors the top-level `case "video"` partition — an inline
+            // `{role=video}` belongs in videos[] for the same reason a hoisted
+            // one does.
+            body.videos.push(item.attrs);
         } else if (item.type === "link") {
             // Handle inline links extracted from paragraph text nodes
             body.links.push(item.attrs);

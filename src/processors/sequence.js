@@ -225,6 +225,24 @@ function createSequenceElement(node, options = {}) {
                 attrs: parseImgBlock(attrs),
             };
         case "image":
+            // `role` decides which content array this lands in — the contract
+            // published in docs/reference/content-structure.md ("Media Assets"):
+            // icon → icons, video → videos, everything else → images.
+            //
+            // The video branch was missing until 2026-07-30: every
+            // `{role=video}` node ran parseImgBlock, which does not carry
+            // poster/autoplay/muted/loop/controls, so the author's declaration
+            // was demoted to an image AND its playback attrs were dropped —
+            // while the build had already generated a poster for it
+            // (@uniweb/build site/assets.js). Note this does NOT route to
+            // parseVideoBlock: that reader speaks the editor's dialect
+            // (coverImg, info), not the markdown one.
+            if (attrs?.role === "video") {
+                return {
+                    type: "video",
+                    attrs: parseMarkdownVideo(attrs),
+                };
+            }
             // Standard ProseMirror image node - resolve attrs the same way as
             // ImageBlock so info.identifier lands as a CDN URL. CLI-deployed
             // content uses this node type; without parseImgBlock the url
@@ -529,6 +547,24 @@ function processInlineElements(content) {
                 type: "icon",
                 attrs: parseUniwebIcon(item.attrs),
             });
+        } else if (item.type === "image" || item.type === "ImageBlock") {
+            // A media node that stayed inside its paragraph — content-reader
+            // hoists a standalone one to the document root, but an image sitting
+            // beside text does not qualify (parser/block.js `isBlockEligible`).
+            //
+            // Without this branch such a node reached NOTHING: getTextContent
+            // skips it, so it was absent from the paragraph's `text`, absent
+            // from `children`, and absent from `body.images` — the author's
+            // image silently deleted. groups.js has carried the receiving
+            // branch (and a comment describing exactly this failure) since it
+            // was written, but nothing ever emitted the item it reads.
+            const isVideo = item.attrs?.role === "video";
+            items.push({
+                type: isVideo ? "video" : "image",
+                attrs: isVideo
+                    ? parseMarkdownVideo(item.attrs)
+                    : parseImgBlock(item.attrs || {}),
+            });
         } else if (item.type === "math-inline" || item.type === "math_inline") {
             items.push(item);
         } else if (item.type === "inset_placeholder") {
@@ -626,14 +662,23 @@ function parseDocumentBlock(itemAttrs) {
 }
 
 function parseUniwebIcon(itemAttrs) {
-    const { svg, url, size, color, preserveColors, href, target, library, name } = itemAttrs || {};
+    const { svg, url, src, size, color, preserveColors, href, target, library, name } = itemAttrs || {};
 
     // Build object with only defined fields — icon source varies:
     // TipTap editor: svg/url (resolved inline)
     // Markdown pipeline: library + name (resolved at runtime via CDN)
+    //                    OR a file, which arrives as `src`
     const icon = {};
     if (svg) icon.svg = svg;
-    if (url) icon.url = url;
+    // Standard ProseMirror `image` nodes use `src`; the editor's `UniwebIcon`
+    // uses `url`. Honor either, exactly as parseImgBlock does below — a
+    // file-sourced icon is authored `![Logo](icon:./logo.svg)` or
+    // `![Logo](./logo.svg){role=icon}` (both documented in AGENTS.md and
+    // docs/reference/content-structure.md), and reaches here as `src` with no
+    // library/name. Until 2026-07-30 this reader dropped it, so every
+    // documented file-sourced icon delivered `{}` and rendered nothing.
+    // `url` is the key kit's <Icon> fetches from.
+    if (url || src) icon.url = url || src;
     if (size) icon.size = size;
     if (color) icon.color = color;
     if (preserveColors) icon.preserveColors = preserveColors;
@@ -695,6 +740,24 @@ function parseImgBlock(itemAttrs) {
         credit = "",
         id, // {#fig-id} cross-reference label — preserved so Press
             // adapters can emit \label{id} (LaTeX) / <id> (Typst).
+        // ── Markdown-authored attributes ────────────────────────────────
+        // This function was written for the EDITOR's `ImageBlock` node and
+        // later reused for the markdown `image` node (see `case "image"`), so
+        // its vocabulary is the editor's: contentType, direction, filter,
+        // theme, credit. Everything markdown declares and the editor does not
+        // was therefore tokenized, declared, and then dropped one layer before
+        // delivery — the published "Image Attributes" table
+        // (docs/reference/content-structure.md) reached no component, and
+        // neither did the `role=pdf` set added 2026-07-29 for the editor's
+        // `document` fold-in. Carried 2026-07-30.
+        width,
+        height,
+        loading,
+        fit,
+        position,
+        preview,     // role=pdf — the preview image
+        author,      // role=pdf — resource metadata, rendered beside the preview
+        description, // role=pdf — describes the RESOURCE, not the image (≠ alt)
     } = itemAttrs;
 
     let { contentType, viewType, contentId, identifier } = imgInfo || {};
@@ -729,6 +792,10 @@ function parseImgBlock(itemAttrs) {
         direction,
         filter,
         imgPos: direction === "left" || direction === "right" ? direction : "",
+        // NOTE: `size` here is the direction-derived LAYOUT size
+        // (basic/lg/full), not the author's `{size=…}` — that attribute is
+        // icon-only and is read by parseUniwebIcon. Do not wire `{size=…}`
+        // through here; the two meanings collide on one key.
         size: sizes[direction] || "basic",
         href,
         target,
@@ -736,7 +803,67 @@ function parseImgBlock(itemAttrs) {
         role,
         credit,
         id: id || undefined,
+        // Omitted when absent, so an existing consumer sees no new empty keys.
+        ...(width !== undefined && width !== null && { width }),
+        ...(height !== undefined && height !== null && { height }),
+        ...(loading && { loading }),
+        ...(fit && { fit }),
+        ...(position && { position }),
+        ...(preview && { preview }),
+        ...(author && { author }),
+        ...(description && { description }),
     };
+}
+
+// A video authored in markdown: `![alt](./demo.mp4){role=video …}`.
+//
+// Distinct from parseVideoBlock below, which reads the EDITOR's `Video` node
+// (`coverImg`, `info`). The two surfaces name the same concepts differently and
+// collapsing them would drop one side's spelling; this reader carries the
+// attribute set that docs/reference/content-structure.md publishes for the
+// video role, and the shape it documents: `{ src, href, target }` plus the
+// playback flags.
+function parseMarkdownVideo(itemAttrs) {
+    const {
+        src,
+        url,
+        info,
+        poster,
+        alt = "",
+        caption = "",
+        autoplay,
+        muted,
+        loop,
+        controls,
+        href = "",
+        target = "",
+        role,
+        id, // {#fig-id} cross-reference label, same as parseImgBlock
+    } = itemAttrs || {};
+
+    const video = {
+        // `identifier` (a CDN-resolvable asset id) wins when present, matching
+        // parseImgBlock — an editor-deployed asset with a stale src must not
+        // shadow the CDN copy.
+        src: makeAssetUrl({ src: url || src, ...info }),
+        alt,
+        caption: stripTags(caption),
+        role,
+        href,
+        target,
+    };
+
+    // Playback attributes are omitted rather than defaulted: a component can
+    // then tell "the author said nothing" from "the author said false", and
+    // kit's <Media> supplies its own defaults (controls on, the rest off).
+    if (poster) video.poster = poster;
+    if (autoplay !== undefined) video.autoplay = autoplay;
+    if (muted !== undefined) video.muted = muted;
+    if (loop !== undefined) video.loop = loop;
+    if (controls !== undefined) video.controls = controls;
+    if (id) video.id = id;
+
+    return video;
 }
 
 function parseVideoBlock(itemAttrs) {

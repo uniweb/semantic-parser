@@ -334,4 +334,30 @@ describe('icon identity crosses to the editor intact', () => {
     const parsed = parseContent(buildDoc({ icons: [{ library: 'lucide', name: 'star' }] }))
     expect(parsed.icons).toEqual([{ library: 'lucide', name: 'star' }])
   })
+
+  // `svg` is markup, `url` is a URL — on both sides. A file path in the markup
+  // slot renders nothing, and did until 2026-07-30.
+  test('a file-sourced icon lands in url, never in the svg slot', () => {
+    const icon = buildDoc({ icons: [{ src: '/uploads/mine.svg' }] }).content.find(
+      n => n.type === 'UniwebIcon'
+    )
+    expect(icon.attrs.url).toBe('/uploads/mine.svg')
+    expect(icon.attrs).not.toHaveProperty('svg')
+  })
+
+  test('inline svg markup still lands in the svg slot', () => {
+    const icon = buildDoc({ icons: [{ svg: '<svg viewBox="0 0 1 1"/>' }] }).content.find(
+      n => n.type === 'UniwebIcon'
+    )
+    expect(icon.attrs.svg).toBe('<svg viewBox="0 0 1 1"/>')
+    expect(icon.attrs).not.toHaveProperty('url')
+  })
+
+  test('a file-sourced icon round-trips — the builder accepts what the parser emits', () => {
+    // parseUniwebIcon emits `url`; this builder took only `src`, so the
+    // round-trip invariant in this file's header would have broken silently.
+    expect(parseContent(buildDoc({ icons: [{ url: '/uploads/mine.svg' }] })).icons).toEqual([
+      { url: '/uploads/mine.svg' },
+    ])
+  })
 })

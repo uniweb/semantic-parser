@@ -56,7 +56,7 @@ function imageBlock({ src, alt = '', caption = '', direction, role, width, heigh
   return { type: 'ImageBlock', attrs }
 }
 
-function iconNode({ src, svg, library, name, size, color }) {
+function iconNode({ src, url, svg, library, name, size, color }) {
   // UniwebIcon supports multiple source types.
   //
   // The family rides INSIDE `name` as `family:id`. The editor's node declares
@@ -64,8 +64,17 @@ function iconNode({ src, svg, library, name, size, color }) {
   // and ProseMirror silently drops undeclared attrs on `fromJSON` — so emitting
   // a separate `library` lost the family without a trace, on the path that
   // builds starter content for every new section.
+  //
+  // `svg` is MARKUP and `url` is a URL — on both sides. A file-sourced icon
+  // arrives here as `src` and belongs in `url`, not in the markup slot; putting
+  // a path where a consumer expects `<svg …>` renders nothing. (Fixed
+  // 2026-07-30; `url` is declared on the editor's node, so it crosses intact.)
   const attrs = {}
-  if (svg || src) attrs.svg = svg || src
+  if (svg) attrs.svg = svg
+  // Either spelling in, one spelling out — `parseUniwebIcon` now emits `url`
+  // for a file-sourced icon, and this builder's documented invariant is that
+  // parseContent(buildDoc(x)) round-trips.
+  if (url || src) attrs.url = url || src
   if (name) attrs.name = library ? `${library}:${name}` : name
   if (size) attrs.size = size
   if (color) attrs.color = color

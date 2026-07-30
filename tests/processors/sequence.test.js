@@ -732,3 +732,168 @@ describe("icon nodes carry an attrs OBJECT", () => {
     expect(entry.attrs).toEqual({ library: "lu", name: "house" });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Media roles. The delivery partition published in
+// docs/reference/content-structure.md: icon → icons, video → videos, everything
+// else → images. Until 2026-07-30 only the icon half of it existed.
+//
+// These use hand-built ProseMirror nodes, which is this suite's convention but
+// also its limit — the shapes below are ones this repo writes. The check that a
+// real author's markdown produces them lives in the monorepo's
+// `_e2e/documented-authoring-surface.test.js`, which reads its corpus from the
+// published docs.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("media roles decide the delivery array", () => {
+  const seq = (attrs) =>
+    processSequence({ type: "doc", content: [{ type: "image", attrs }] })[0];
+
+  test("role=video becomes a video element, not an image", () => {
+    expect(seq({ src: "/t.mp4", role: "video" }).type).toBe("video");
+  });
+
+  test("a video carries every documented playback attribute", () => {
+    const { attrs } = seq({
+      src: "/t.mp4",
+      role: "video",
+      alt: "A talk",
+      poster: "/p.png",
+      autoplay: true,
+      muted: true,
+      loop: true,
+      controls: true,
+    });
+    expect(attrs).toMatchObject({
+      src: "/t.mp4",
+      alt: "A talk",
+      poster: "/p.png",
+      autoplay: true,
+      muted: true,
+      loop: true,
+      controls: true,
+    });
+  });
+
+  test("playback attributes are omitted, not defaulted", () => {
+    // A component must be able to tell "the author said nothing" from
+    // "the author said false".
+    const { attrs } = seq({ src: "/t.mp4", role: "video" });
+    expect(attrs).not.toHaveProperty("autoplay");
+    expect(attrs).not.toHaveProperty("poster");
+  });
+
+  test("a video keeps href/target — clickable media", () => {
+    expect(
+      seq({ src: "/d.mp4", role: "video", href: "/demo", target: "_blank" }).attrs
+    ).toMatchObject({ href: "/demo", target: "_blank" });
+  });
+
+  test("role=video does NOT go through parseVideoBlock's editor dialect", () => {
+    // parseVideoBlock reads `coverImg`/`info` — the editor's Video node. Routing
+    // markdown through it would drop poster and every playback flag.
+    expect(seq({ src: "/t.mp4", role: "video", poster: "/p.png" }).attrs.coverImg)
+      .toBeUndefined();
+  });
+
+  test("a non-video role still becomes an image", () => {
+    expect(seq({ src: "/h.jpg", role: "banner" }).type).toBe("image");
+  });
+
+  test("an image carries the documented Image Attributes", () => {
+    // parseImgBlock was written for the editor's ImageBlock and reused here, so
+    // these were declared upstream and then dropped before delivery.
+    expect(
+      seq({
+        src: "/i.jpg",
+        width: 800,
+        height: 600,
+        loading: "lazy",
+        fit: "cover",
+        position: "center",
+      }).attrs
+    ).toMatchObject({
+      width: 800,
+      height: 600,
+      loading: "lazy",
+      fit: "cover",
+      position: "center",
+    });
+  });
+
+  test("role=pdf carries preview/author/description", () => {
+    expect(
+      seq({
+        src: "/r.pdf",
+        role: "pdf",
+        preview: "/c.jpg",
+        author: "Ada",
+        description: "Annual",
+      }).attrs
+    ).toMatchObject({ preview: "/c.jpg", author: "Ada", description: "Annual" });
+  });
+
+  test("an image with no extra attrs gains no empty keys", () => {
+    const { attrs } = seq({ src: "/i.jpg" });
+    for (const k of ["width", "height", "loading", "fit", "position", "preview"]) {
+      expect(attrs).not.toHaveProperty(k);
+    }
+  });
+});
+
+describe("a file-sourced icon carries its source", () => {
+  const icon = (attrs) =>
+    processSequence({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "image", attrs }] }],
+    })[0].children.find((c) => c.type === "icon");
+
+  test("src lands in url — the key kit's <Icon> fetches", () => {
+    // `![Logo](icon:./logo.svg)` and `![Logo](./logo.svg){role=icon}` are both
+    // documented, and both delivered `{}` until 2026-07-30.
+    expect(icon({ src: "/uploads/mine.svg", role: "icon" }).attrs).toEqual({
+      url: "/uploads/mine.svg",
+    });
+  });
+
+  test("a library reference is still preferred over any source", () => {
+    expect(icon({ role: "icon", library: "lu", name: "zap" }).attrs).toEqual({
+      library: "lu",
+      name: "zap",
+    });
+  });
+});
+
+describe("media inline with prose is not dropped", () => {
+  // content-reader hoists a standalone image to the document root, but one
+  // sitting beside text stays in its paragraph. Nothing collected it there: it
+  // was absent from the paragraph text, from children, and from images[].
+  const inline = (attrs) =>
+    processSequence({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "before " },
+            { type: "image", attrs },
+            { type: "text", text: " after" },
+          ],
+        },
+      ],
+    })[0].children;
+
+  test("an inline image reaches the paragraph's children", () => {
+    const items = inline({ src: "/i.png", role: "image" });
+    expect(items.filter((i) => i.type === "image")).toHaveLength(1);
+    expect(items.find((i) => i.type === "image").attrs).toMatchObject({
+      url: "/i.png",
+    });
+  });
+
+  test("an inline video is a video there too", () => {
+    const items = inline({ src: "/t.mp4", role: "video" });
+    expect(items.find((i) => i.type === "video").attrs).toMatchObject({
+      src: "/t.mp4",
+    });
+  });
+});
