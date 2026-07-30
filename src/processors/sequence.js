@@ -296,10 +296,49 @@ function createSequenceElement(node, options = {}) {
             };
         }
 
+        case "table": {
+            // Rows of cells, each cell a nested SEQUENCE — the same recursion a
+            // blockquote or a list item gets, so a cell may hold anything a
+            // block can.
+            //
+            // Added 2026-07-30. Before this a table fell to the `default:`
+            // branch and became `{ type: 'table', content: '' }` — not merely
+            // unrendered but DESTROYED: `getTextContent` walks for text nodes
+            // and a table's children are rows, so even the cell text came back
+            // empty. Every consumer of `content.sequence` therefore lost tables
+            // entirely, which read as "the renderer has no table case" and was
+            // really the vocabulary not carrying one.
+            const rows = (content || [])
+                .filter((row) => row.type === "tableRow")
+                .map((row) => ({
+                    cells: (row.content || [])
+                        .filter((cell) => cell.type === "tableCell")
+                        .map((cell) => ({
+                            children: processSequence({ content: cell.content }, options),
+                            header: cell.attrs?.header === true,
+                            align: cell.attrs?.align || null,
+                            colspan: cell.attrs?.colspan || 1,
+                            rowspan: cell.attrs?.rowspan || 1,
+                        })),
+                }));
+
+            return { type: "table", rows, attrs };
+        }
+
+        // `divider` is what content-reader emits; `horizontalRule` and
+        // `DividerBlock` are the editor's spellings. All three are one element.
+        //
+        // The reader's own name was NOT listed here until 2026-07-30 — markdown
+        // dividers reached consumers only by falling through `default:`, which
+        // happens to produce `{ type: 'divider', content: '' }` and happens to
+        // match what everything downstream keys on. It worked by coincidence,
+        // and the coincidence would have broken the moment `default:` changed.
+        case "divider":
         case "DividerBlock":
         case "horizontalRule":
             return {
                 type: "divider",
+                attrs,
             };
 
         // Custom TipTap elements

@@ -25,6 +25,7 @@ function flattenGroup(group) {
     // on every page (math is <1% of content in practice; authors who need
     // ordering should use content.sequence anyway).
     if (group.body.math && group.body.math.length) flat.math = group.body.math;
+    if (group.body.tables && group.body.tables.length) flat.tables = group.body.tables;
     return flat;
 }
 
@@ -458,6 +459,18 @@ function processGroupContent(elements) {
                         id: element.id || null,
                         latex: element.latex || '',
                         mathml: element.mathml || '',
+                    });
+                    break;
+
+                case "table":
+                    // Lazily attached, like `math`: most content has no table,
+                    // and a component that cares about ordering should read
+                    // `content.sequence` anyway. Before 2026-07-30 the sequence
+                    // did not carry tables at all, so there was nothing here to
+                    // collect.
+                    (body.tables ||= []).push({
+                        rows: element.rows || [],
+                        attrs: element.attrs || {},
                     });
                     break;
 

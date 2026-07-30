@@ -897,3 +897,97 @@ describe("media inline with prose is not dropped", () => {
     });
   });
 });
+
+describe("tables carry structure, not a flattened string", () => {
+    // Until 2026-07-30 a table fell to the `default:` branch and became
+    // `{ type: 'table', content: '' }` — not merely unrendered but destroyed.
+    // `getTextContent` walks for text nodes, and a table's children are rows,
+    // so even the cell text came back empty. Every consumer of the sequence
+    // lost tables, which read as "no renderer has a table case" and was really
+    // the vocabulary not carrying one.
+    const table = {
+        type: "doc",
+        content: [{
+            type: "table",
+            content: [
+                {
+                    type: "tableRow",
+                    content: [
+                        {
+                            type: "tableCell",
+                            attrs: { header: true, align: "left", colspan: 1, rowspan: 1 },
+                            content: [{ type: "paragraph", content: [{ type: "text", text: "Name" }] }],
+                        },
+                        {
+                            type: "tableCell",
+                            attrs: { header: true, align: "right", colspan: 1, rowspan: 1 },
+                            content: [{ type: "paragraph", content: [{ type: "text", text: "Qty" }] }],
+                        },
+                    ],
+                },
+                {
+                    type: "tableRow",
+                    content: [
+                        {
+                            type: "tableCell",
+                            attrs: { header: false, align: "left", colspan: 1, rowspan: 1 },
+                            content: [{
+                                type: "paragraph",
+                                content: [{ type: "text", text: "Bolt", marks: [{ type: "bold" }] }],
+                            }],
+                        },
+                        {
+                            type: "tableCell",
+                            attrs: { header: false, align: "right", colspan: 2, rowspan: 1 },
+                            content: [{ type: "paragraph", content: [{ type: "text", text: "12" }] }],
+                        },
+                    ],
+                },
+            ],
+        }],
+    };
+
+    test("emits rows and cells", () => {
+        const [el] = processSequence(table);
+        expect(el.type).toBe("table");
+        expect(el.rows).toHaveLength(2);
+        expect(el.rows[0].cells).toHaveLength(2);
+    });
+
+    test("a cell is a nested SEQUENCE — it may hold any block", () => {
+        const [el] = processSequence(table);
+        expect(el.rows[0].cells[0].children).toEqual([
+            { type: "paragraph", text: "Name", children: [] },
+        ]);
+    });
+
+    test("inline marks survive inside a cell", () => {
+        const [el] = processSequence(table);
+        expect(el.rows[1].cells[0].children[0].text).toBe("<strong>Bolt</strong>");
+    });
+
+    test("carries the attributes a renderer needs", () => {
+        const [el] = processSequence(table);
+        expect(el.rows[0].cells[0]).toMatchObject({ header: true, align: "left" });
+        expect(el.rows[1].cells[0]).toMatchObject({ header: false, align: "left" });
+        expect(el.rows[1].cells[1]).toMatchObject({ colspan: 2, rowspan: 1 });
+    });
+
+    test("an empty table does not throw", () => {
+        expect(processSequence({ type: "doc", content: [{ type: "table" }] })).toEqual([
+            { type: "table", rows: [], attrs: undefined },
+        ]);
+    });
+});
+
+describe("divider — all three spellings are one element", () => {
+    // `divider` is content-reader's name; horizontalRule and DividerBlock are
+    // the editor's. The reader's own name was missing until 2026-07-30, so
+    // markdown dividers reached consumers only by falling through `default:`,
+    // which happens to produce `{ type: 'divider', content: '' }` and happens
+    // to match what downstream keys on. It worked by coincidence.
+    test.each(["divider", "horizontalRule", "DividerBlock"])("%s", (type) => {
+        const [el] = processSequence({ type: "doc", content: [{ type }] });
+        expect(el.type).toBe("divider");
+    });
+});
