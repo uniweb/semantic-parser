@@ -470,10 +470,23 @@ function getTextContent(content, options = {}) {
         }
     }
 
+    // Icons are emitted as positional markers that a renderer swaps for a real
+    // component (see renderInlineNode). The marker carries the icon's ordinal
+    // among the icons of THIS content array, which is the same order
+    // processInlineElements() puts them in `children` — so a consumer resolves
+    // one with `children.filter(c => c.type === 'icon')[index]`. Referencing by
+    // ordinal rather than serializing the attrs keeps an inline `svg` blob out
+    // of the text stream and leaves `children` the single source of truth.
+    const iconOrdinals = new Map();
+    let nextIcon = 0;
+    for (const node of content) {
+        if (isIconNode(node)) iconOrdinals.set(node, nextIcon++);
+    }
+
     return groups
         .reduce((prev, group) => {
             const inner = group.nodes.reduce(
-                (acc, node) => acc + renderInlineNode(node),
+                (acc, node) => acc + renderInlineNode(node, iconOrdinals),
                 "",
             );
             if (!inner && !group.link) return prev;
@@ -486,7 +499,7 @@ function getTextContent(content, options = {}) {
  * Render one inline node to HTML, applying every mark EXCEPT link — the
  * anchor is applied per group by getTextContent, since it may span nodes.
  */
-function renderInlineNode(curr) {
+function renderInlineNode(curr, iconOrdinals) {
     return [curr]
         .reduce((prev, curr) => {
             const { type, marks = [], text } = curr;
@@ -593,6 +606,21 @@ function renderInlineNode(curr) {
                 return prev + `<uniweb-inset data-ref-id="${refId}"></uniweb-inset>`;
             } else if (type === "hardBreak") {
                 return prev + "<br>";
+            } else if (isIconNode(curr)) {
+                // An icon sitting IN the prose — `Click the ![](lu-save) button`.
+                // It rides as a positional marker for the same reason an inline
+                // inset does: the paragraph's text is an HTML string, and an
+                // icon needs a component (kit's <Icon>, which resolves the
+                // library+name against the icon CDN at render time).
+                //
+                // Until 2026-08-12 this fell through to the catch-all below and
+                // the icon vanished — the text kept a gap where it had been, the
+                // entry stayed in `children` and in `content.icons`, and nothing
+                // put it back. Every other inline atom (math, insets) already
+                // had a marker; this was the one that did not.
+                const index = iconOrdinals?.get(curr);
+                if (index === undefined) return prev;
+                return prev + `<uniweb-icon data-index="${index}"></uniweb-icon>`;
             } else {
                 // console.warn(`unhandled text content type: ${type}`, curr);
                 return prev;
