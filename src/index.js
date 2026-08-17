@@ -1,4 +1,4 @@
-import { processSequence } from "./processors/sequence.js";
+import { processSequence, resolveAssetUrl } from "./processors/sequence.js";
 import { processGroups } from "./processors/groups.js";
 import { buildDoc } from "./builders/doc.js";
 
@@ -46,4 +46,8 @@ function parseContent(doc, options = {}) {
     };
 }
 
-export { parseContent, buildDoc };
+// `resolveAssetUrl` is exported so a consumer that needs an asset URL outside a
+// parse (the editor, a kit component) reaches THIS implementation rather than
+// writing a second one. A duplicated selector is this repo's most-repeated
+// defect; one exported function is the cheapest guard against it.
+export { parseContent, buildDoc, resolveAssetUrl };

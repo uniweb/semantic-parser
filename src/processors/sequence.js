@@ -148,9 +148,7 @@ function createSequenceElement(node, options = {}) {
         case "blockquote":
             return {
                 type: "blockquote",
-                children: processSequence({
-                    content,
-                }),
+                children: processSequence({ content }, options),
                 attrs,
             };
 
@@ -164,7 +162,7 @@ function createSequenceElement(node, options = {}) {
                 type: "inset_block",
                 component,
                 params,
-                children: processSequence({ content }),
+                children: processSequence({ content }, options),
             };
         }
 
@@ -178,9 +176,11 @@ function createSequenceElement(node, options = {}) {
             // put content-reader inside the runtime. The reader already built
             // this node; the job here is only to WALK it.
             //
-            // `options` rides along, unlike the `inset_block` and `blockquote`
-            // cases above, so nested content is sequenced under the same
-            // options as its parent.
+            // `options` rides along so nested content is sequenced under the
+            // same options as its parent. (`inset_block` and `blockquote` used
+            // to drop it and now do the same — harmless while nothing here read
+            // `options`, but an asset inside a blockquote would have lost its
+            // resolution template once one did.)
             return {
                 type: "concept_block",
                 tag: attrs?.tag,
@@ -242,7 +242,7 @@ function createSequenceElement(node, options = {}) {
         case "ImageBlock":
             return {
                 type: "image",
-                attrs: parseImgBlock(attrs),
+                attrs: parseImgBlock(attrs, options),
             };
         case "image":
             // `role` decides which content array this lands in — the contract
@@ -260,7 +260,7 @@ function createSequenceElement(node, options = {}) {
             if (attrs?.role === "video") {
                 return {
                     type: "video",
-                    attrs: parseMarkdownVideo(attrs),
+                    attrs: parseMarkdownVideo(attrs, options),
                 };
             }
             // Standard ProseMirror image node - resolve attrs the same way as
@@ -269,12 +269,12 @@ function createSequenceElement(node, options = {}) {
             // wouldn't be populated and components render an empty slot.
             return {
                 type: "image",
-                attrs: parseImgBlock(attrs || {}),
+                attrs: parseImgBlock(attrs || {}, options),
             };
         case "Video":
             return {
                 type: "video",
-                attrs: parseVideoBlock(attrs),
+                attrs: parseVideoBlock(attrs, options),
             };
         case "bulletList":
         case "orderedList": {
@@ -687,6 +687,56 @@ function processInlineElements(content) {
     return items;
 }
 
+/**
+ * Resolve a STORE-HELD asset (`assetId` + `assetExt`) through the host's
+ * template — the current mechanism, and the one to reach for.
+ *
+ * The host declares `config.assets.url` on the published payload; the runtime
+ * hands it here as `options.assets.url`. We substitute `{id}` and `{ext}` and
+ * do nothing else: the template names a host and carries the store's whole path
+ * layout, so a framework package never composes a serve location or guesses an
+ * origin — a host may move its assets without a framework release.
+ *
+ * ⛔ Three ways this returns '' — "unresolved", never a guess:
+ *   - **no template** (the host declared none) — absent ⇒ absent
+ *   - **an unknown placeholder** — never emit a half-substituted URL
+ *   - **`{ext}` with no `assetExt`** — `base.` is a broken URL that reads like
+ *     a typo rather than a missing field
+ *
+ * Callers treat '' as "fall through to the next reference form", which is what
+ * makes an id-bearing node safe to write before any deployment emits a template.
+ *
+ * @param {string} assetId  - the store's opaque id (backend mints a sha256)
+ * @param {string} assetExt - the extension, minted separately (never derived
+ *                            from the id, which carries no extension)
+ * @param {string} template - `config.assets.url`, e.g. `https://cdn/x/{id}/base.{ext}`
+ * @returns {string} the resolved URL, or '' when it cannot be resolved
+ */
+function resolveAssetUrl(assetId, assetExt, template) {
+    if (!assetId || typeof assetId !== "string") return "";
+    if (!template || typeof template !== "string") return "";
+    let resolvable = true;
+    const url = template.replace(/\{(\w+)\}/g, (match, name) => {
+        if (name === "id") return assetId;
+        if (name === "ext" && assetExt) return assetExt;
+        resolvable = false;
+        return match;
+    });
+    return resolvable ? url : "";
+}
+
+/** `resolveAssetUrl` against a node's attrs + the parse options. */
+function assetUrlFromAttrs(attrs, options) {
+    return resolveAssetUrl(attrs?.assetId, attrs?.assetExt, options?.assets?.url);
+}
+
+// ⛔ LEGACY BELOW — the PHP-estate identifier path. Do not extend it.
+//
+// `{version}/{filename}` identifiers have no current producer — the CLI emits
+// `src`, and editors store the URL their host hands them. Only content authored
+// against the original hosted service still carries one, and the hardcoded host
+// below cannot be correct for any other deployment: the CLI can be pointed at
+// any host. New references use `assetId`/`assetExt` above.
 const ASSET_BASE_URL = "https://assets.uniweb.app/";
 
 /**
@@ -815,7 +865,7 @@ function parseIconBlock(itemAttrs) {
     return icon;
 }
 
-function parseImgBlock(itemAttrs) {
+function parseImgBlock(itemAttrs, options) {
     let {
         info: imgInfo,
         targetId,
@@ -862,12 +912,23 @@ function parseImgBlock(itemAttrs) {
 
     caption = stripTags(caption);
 
-    // Standard ProseMirror `image` nodes use `src`; the custom
-    // `ImageBlock` node uses `url`. Honor either so callers don't have
-    // to pre-normalize. `identifier` (CDN-resolvable asset id) wins
-    // when present so an editor-deployed image with a stale `src`
-    // doesn't shadow the CDN copy.
-    if (identifier) {
+    // Reference precedence. Standard ProseMirror `image` nodes use `src`; the
+    // custom `ImageBlock` node uses `url`. Honor either so callers don't have to
+    // pre-normalize.
+    //
+    // ⭐ A store-held asset (`assetId`) wins WHEN IT RESOLVES — not merely when
+    // it is present. That distinction is the whole reason a producer can write
+    // `assetId` alongside `src` before any deployment declares
+    // `config.assets.url`: until one does, resolution yields '' and the node
+    // renders through `src` exactly as it does today. Content written now stays
+    // correct whichever order the halves arrive in.
+    //
+    // `identifier` is the LEGACY estate path and keeps its old precedence over a
+    // stale `src`.
+    const assetUrl = assetUrlFromAttrs(itemAttrs, options);
+    if (assetUrl) {
+        url = assetUrl;
+    } else if (identifier) {
         url = makeAssetUrl(imgInfo);
     } else if (!url && src) {
         url = src;
@@ -915,7 +976,7 @@ function parseImgBlock(itemAttrs) {
 // attribute set that docs/reference/content-structure.md publishes for the
 // video role, and the shape it documents: `{ src, href, target }` plus the
 // playback flags.
-function parseMarkdownVideo(itemAttrs) {
+function parseMarkdownVideo(itemAttrs, options) {
     const {
         src,
         url,
@@ -933,11 +994,18 @@ function parseMarkdownVideo(itemAttrs) {
         id, // {#fig-id} cross-reference label, same as parseImgBlock
     } = itemAttrs || {};
 
+    // Reference precedence, now genuinely identical to parseImgBlock: a
+    // resolvable store-held asset, then the legacy identifier, then the authored
+    // src/url.
+    //
+    // ⚠️ The comment here used to claim identifier-precedence "matching
+    // parseImgBlock" while the code did the opposite — it passed `src` INTO
+    // `makeAssetUrl`, which returns a src/url before it ever looks at
+    // `identifier`. So image and video resolved differently for years and the
+    // comment asserted they did not. Aligned to the documented intent (2026-08-17).
+    const assetUrl = assetUrlFromAttrs(itemAttrs, options);
     const video = {
-        // `identifier` (a CDN-resolvable asset id) wins when present, matching
-        // parseImgBlock — an editor-deployed asset with a stale src must not
-        // shadow the CDN copy.
-        src: makeAssetUrl({ src: url || src, ...info }),
+        src: assetUrl || makeAssetUrl(info) || url || src || "",
         alt,
         caption: stripTags(caption),
         role,
@@ -958,7 +1026,7 @@ function parseMarkdownVideo(itemAttrs) {
     return video;
 }
 
-function parseVideoBlock(itemAttrs) {
+function parseVideoBlock(itemAttrs, options) {
     let {
         src,
         caption = "",
@@ -970,10 +1038,9 @@ function parseVideoBlock(itemAttrs) {
         target = "",
     } = itemAttrs;
 
-    let video = makeAssetUrl({
-        src,
-        ...info,
-    });
+    // Same precedence as parseImgBlock / parseMarkdownVideo: a resolvable
+    // store-held asset, then the legacy identifier, then the authored src.
+    const video = assetUrlFromAttrs(itemAttrs, options) || makeAssetUrl(info) || src || "";
 
     return {
         src: video,
@@ -1188,4 +1255,4 @@ function isStyledLink(item) {
     };
 }
 
-export { processSequence };
+export { processSequence, resolveAssetUrl };
