@@ -712,6 +712,35 @@ function processInlineElements(content, options = {}) {
  * @param {string} template - `config.assets.url`, e.g. `https://cdn/x/{id}/base.{ext}`
  * @returns {string} the resolved URL, or '' when it cannot be resolved
  */
+/**
+ * The asset-bearing slots on a media node — the ONE definition, exported so no
+ * consumer keeps its own.
+ *
+ * ⭐ A node carries more than one asset reference. An image has `src`; a video
+ * adds a `poster`; a document embed adds a `preview`. Identity therefore cannot
+ * be a single pair of attrs — it has to name WHICH reference it identifies, or a
+ * producer cannot stamp a poster without inventing vocabulary.
+ *
+ * The identity attrs are **flat and declared**, not a nested `assets: {…}` map,
+ * and that is deliberate: a nested map puts identity inside a value the schema
+ * sweep cannot see, which is exactly the class of defect that makes a reference
+ * buried in an opaque field unenumerable and un-re-pointable. Flat attrs stay
+ * visible to `getBaseSchema()`, to the parity sweep, and to anything generating
+ * an adapter from the declared schema.
+ *
+ * `assetId`/`assetExt` are unprefixed because `src` is the PRIMARY reference —
+ * the one every fallback path already resolves to. The convention is: unprefixed
+ * identifies the primary; a prefix names the attr it belongs to.
+ *
+ * `url` rides in the primary slot because the editor's `ImageBlock` uses it where
+ * markdown's `image` uses `src`; both mean the same reference.
+ */
+export const ASSET_SLOTS = [
+    { urls: ["src", "url"], id: "assetId", ext: "assetExt" },
+    { urls: ["poster"], id: "posterAssetId", ext: "posterAssetExt" },
+    { urls: ["preview"], id: "previewAssetId", ext: "previewAssetExt" },
+];
+
 function resolveAssetUrl(assetId, assetExt, template) {
     if (!assetId || typeof assetId !== "string") return "";
     if (!template || typeof template !== "string") return "";
@@ -725,9 +754,23 @@ function resolveAssetUrl(assetId, assetExt, template) {
     return resolvable ? url : "";
 }
 
-/** `resolveAssetUrl` against a node's attrs + the parse options. */
-function assetUrlFromAttrs(attrs, options) {
-    return resolveAssetUrl(attrs?.assetId, attrs?.assetExt, options?.assets?.url);
+/** `resolveAssetUrl` against a node's attrs + the parse options, for one slot. */
+function assetUrlFromAttrs(attrs, options, slot = ASSET_SLOTS[0]) {
+    return resolveAssetUrl(attrs?.[slot.id], attrs?.[slot.ext], options?.assets?.url);
+}
+
+/** The slot whose identity attrs name a given url attr (`poster` → posterAsset*). */
+const slotFor = (urlAttr) => ASSET_SLOTS.find((s) => s.urls.includes(urlAttr));
+
+/**
+ * Resolve a secondary reference (`poster`, `preview`) the same way the primary
+ * one resolves: identity wins when it resolves, else the stored URL stands.
+ * A poster is an asset like any other — it just is not the node's primary.
+ */
+function secondaryAssetUrl(attrs, options, urlAttr) {
+    const slot = slotFor(urlAttr);
+    const resolved = slot ? assetUrlFromAttrs(attrs, options, slot) : "";
+    return resolved || attrs?.[urlAttr] || "";
 }
 
 // ⛔ LEGACY BELOW — the PHP-estate identifier path. Do not extend it.
@@ -976,7 +1019,11 @@ function parseImgBlock(itemAttrs, options) {
         ...(loading && { loading }),
         ...(fit && { fit }),
         ...(position && { position }),
-        ...(preview && { preview }),
+        ...((() => {
+            // Same rule for a document's preview image.
+            const p = secondaryAssetUrl(itemAttrs, options, "preview");
+            return p ? { preview: p } : {};
+        })()),
         ...(author && { author }),
         ...(description && { description }),
     };
@@ -1030,7 +1077,10 @@ function parseMarkdownVideo(itemAttrs, options) {
     // Playback attributes are omitted rather than defaulted: a component can
     // then tell "the author said nothing" from "the author said false", and
     // kit's <Media> supplies its own defaults (controls on, the rest off).
-    if (poster) video.poster = poster;
+    // A poster is an asset like any other — identity resolves it when it can,
+    // and the stored URL stands when it cannot. Same rule as the primary `src`.
+    const posterUrl = secondaryAssetUrl(itemAttrs, options, "poster");
+    if (posterUrl) video.poster = posterUrl;
     if (autoplay !== undefined) video.autoplay = autoplay;
     if (muted !== undefined) video.muted = muted;
     if (loop !== undefined) video.loop = loop;

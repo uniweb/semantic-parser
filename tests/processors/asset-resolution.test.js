@@ -255,3 +255,80 @@ describe('a URL in the identifier slot is passed through, never composed', () =>
     )
   })
 })
+
+describe('a poster is an asset like any other', () => {
+  // A node carries more than one reference: `src`, a video's `poster`, a
+  // document's `preview`. Identity names WHICH — otherwise a producer cannot
+  // record a poster's id without inventing vocabulary, which is where this
+  // started.
+  const videoOf = (attrs, options) =>
+    parseContent(
+      { type: 'doc', content: [{ type: 'image', attrs: { role: 'video', ...attrs } }] },
+      options
+    ).sequence.find((e) => e.type === 'video')
+
+  it('⭐ resolves the poster through its OWN identity slot', () => {
+    const el = videoOf(
+      {
+        src: '/v.mp4',
+        poster: '/old-poster.png',
+        posterAssetId: ID,
+        posterAssetExt: 'png'
+      },
+      { assets: { url: TEMPLATE } }
+    )
+    expect(el.attrs.poster).toBe(`https://cdn.example/x/${ID}/base.png`)
+  })
+
+  it('resolves src and poster INDEPENDENTLY — two assets, two slots', () => {
+    const OTHER = 'b'.repeat(64)
+    const el = videoOf(
+      {
+        assetId: ID,
+        assetExt: 'mp4',
+        posterAssetId: OTHER,
+        posterAssetExt: 'png'
+      },
+      { assets: { url: TEMPLATE } }
+    )
+    expect(el.attrs.src).toBe(`https://cdn.example/x/${ID}/base.mp4`)
+    expect(el.attrs.poster).toBe(`https://cdn.example/x/${OTHER}/base.png`)
+  })
+
+  it('falls through to the stored poster URL with no template', () => {
+    const el = videoOf({
+      src: '/v.mp4',
+      poster: '/old-poster.png',
+      posterAssetId: ID,
+      posterAssetExt: 'png'
+    })
+    expect(el.attrs.poster).toBe('/old-poster.png')
+  })
+
+  it('CONTROL: a poster with no identity is untouched', () => {
+    const el = videoOf({ src: '/v.mp4', poster: '/p.png' }, { assets: { url: TEMPLATE } })
+    expect(el.attrs.poster).toBe('/p.png')
+  })
+
+  it('a document preview resolves through its own slot too', () => {
+    const el = parseContent(
+      {
+        type: 'doc',
+        content: [
+          {
+            type: 'image',
+            attrs: {
+              role: 'pdf',
+              src: '/doc.pdf',
+              preview: '/old.png',
+              previewAssetId: ID,
+              previewAssetExt: 'png'
+            }
+          }
+        ]
+      },
+      { assets: { url: TEMPLATE } }
+    ).sequence.find((e) => e.type === 'image')
+    expect(el.attrs.preview).toBe(`https://cdn.example/x/${ID}/base.png`)
+  })
+})
