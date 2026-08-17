@@ -217,3 +217,41 @@ describe('every node shape the editor can emit resolves', () => {
     )
   })
 })
+
+describe('a URL in the identifier slot is passed through, never composed', () => {
+  // ⛔ A live producer writes a serve URL into `info.identifier` and no `src`
+  // beside it (the app's per-locale image swap). Composing that against the
+  // legacy base yields `https://assets.uniweb.app/dist//base.gateway` — not a
+  // 404 and not a validation failure, a URL-shaped string that renders a broken
+  // image and reads like a missing file. The value is already an address;
+  // declining to compose over it is not constructing one.
+  const urlOf = (identifier) =>
+    parseContent({
+      type: 'doc',
+      content: [{ type: 'image', attrs: { info: { identifier } } }],
+    }).sequence.find((e) => e.type === 'image').attrs.url
+
+  it('passes a rooted serve path through', () => {
+    expect(urlOf('/gateway/asset/dist/9f2c/base.png')).toBe(
+      '/gateway/asset/dist/9f2c/base.png'
+    )
+  })
+
+  it('passes an absolute URL through', () => {
+    expect(urlOf('https://cdn.example/dist/9f2c/base.png')).toBe(
+      'https://cdn.example/dist/9f2c/base.png'
+    )
+  })
+
+  it('passes a protocol-relative URL through', () => {
+    expect(urlOf('//cdn.example/x.png')).toBe('//cdn.example/x.png')
+  })
+
+  it('CONTROL: a genuine legacy identifier still composes against the legacy base', () => {
+    // Without this, the guard could be swallowing the whole legacy path and the
+    // three assertions above would still pass.
+    expect(urlOf('a1b2c3d4-e5f6/photo.jpg')).toBe(
+      'https://assets.uniweb.app/dist/a1b2c3d4-e5f6/base.jpg'
+    )
+  })
+})

@@ -745,6 +745,20 @@ const ASSET_BASE_URL = "https://assets.uniweb.app/";
  */
 function resolveAssetIdentifier(identifier) {
     if (!identifier || typeof identifier !== "string") return "";
+    // ⛔ An identifier that is ALREADY a URL or a rooted path is not an
+    // identifier — it is a serve URL sitting in the identifier slot, and it is
+    // usable exactly as it stands. Composing it against the legacy base
+    // destroys it: `split("/")` on `/gateway/asset/dist/{id}/base.png` takes
+    // `""` as the version and `"gateway"` as the filename, yielding
+    // `https://assets.uniweb.app/dist//base.gateway` — not a 404 and not a
+    // validation failure, a URL-shaped string that renders a broken image and
+    // reads like a missing file.
+    //
+    // The legacy grammar is `{version}/{filename}` with no leading slash, so
+    // nothing legitimate is caught here. Passing it through is not constructing
+    // a serve location: it is declining to construct one over a value that is
+    // already an address. (Measured 2026-08-17 against a real producer.)
+    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\/)/i.test(identifier)) return identifier;
     const [version, filename] = identifier.split("/");
     if (!filename) return "";
     const ext = filename.substring(filename.lastIndexOf(".") + 1);
