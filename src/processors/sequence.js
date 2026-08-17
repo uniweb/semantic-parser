@@ -106,7 +106,7 @@ function createSequenceElement(node, options = {}) {
     const attrs = node.attrs;
     const content = node.content;
 
-    const linkVal = isLink(node);
+    const linkVal = isLink(node, options);
 
     if (linkVal) {
         return {
@@ -121,7 +121,7 @@ function createSequenceElement(node, options = {}) {
         return multipleLinks; // Returns array of link elements
     }
 
-    const styledLink = isStyledLink(node);
+    const styledLink = isStyledLink(node, options);
 
     if (styledLink) return styledLink;
 
@@ -131,7 +131,7 @@ function createSequenceElement(node, options = {}) {
                 type: "heading",
                 level: node.attrs.level,
                 text: getTextContent(content, options),
-                children: processInlineElements(content),
+                children: processInlineElements(content, options),
                 attrs,
             };
 
@@ -141,7 +141,7 @@ function createSequenceElement(node, options = {}) {
             return {
                 type: "paragraph",
                 text: textContent,
-                children: processInlineElements(content),
+                children: processInlineElements(content, options),
                 attrs,
             };
         }
@@ -391,7 +391,7 @@ function createSequenceElement(node, options = {}) {
             return {
                 type: "button",
                 text: textContent,
-                children: processInlineElements(content),
+                children: processInlineElements(content, options),
                 attrs,
             };
         }
@@ -628,7 +628,7 @@ function renderInlineNode(curr, iconOrdinals) {
         }, "");
 }
 
-function processInlineElements(content) {
+function processInlineElements(content, options = {}) {
     if (!content) return [];
 
     const items = [];
@@ -654,8 +654,8 @@ function processInlineElements(content) {
             items.push({
                 type: isVideo ? "video" : "image",
                 attrs: isVideo
-                    ? parseMarkdownVideo(item.attrs)
-                    : parseImgBlock(item.attrs || {}),
+                    ? parseMarkdownVideo(item.attrs, options)
+                    : parseImgBlock(item.attrs || {}, options),
             });
         } else if (item.type === "math-inline" || item.type === "math_inline") {
             items.push(item);
@@ -1076,7 +1076,7 @@ function stripTags(htmlString) {
         .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
-function isLink(item) {
+function isLink(item, options = {}) {
     // Detect paragraphs/headings that are semantically "just a link"
     // (single link text, possibly with decorative icons)
     //
@@ -1134,7 +1134,7 @@ function isLink(item) {
                         iconBefore,
                         iconAfter,
                         // Preserve all inline elements for advanced rendering
-                        children: processInlineElements(originalContent),
+                        children: processInlineElements(originalContent, options),
                     };
                 }
             }
@@ -1199,7 +1199,7 @@ function isOnlyLinks(item) {
 // method to check if given item has multiple content parts and each of them has the same link attrs with different inline style (plain, em, strong, u)
 // if so, it will return the link attrs and all the content parts whose link mark has been removed
 // warning: This method will not work if the any of the content parts are not link marks
-function isStyledLink(item) {
+function isStyledLink(item, options = {}) {
     if (!["paragraph", "heading"].includes(item.type)) return false;
 
     let content = item?.content || [];
@@ -1249,7 +1249,7 @@ function isStyledLink(item) {
 
     return {
         type: "paragraph",
-        children: processInlineElements(item.content),
+        children: processInlineElements(item.content, options),
         text: `<a target="${target}" href="${href}">${textContent}</a>`,
         attrs: item.attrs,
     };

@@ -140,3 +140,80 @@ describe('video precedence — aligned with image', () => {
     expect(el.attrs.src).toBe('https://assets.uniweb.app/dist/v1/base.mp4')
   })
 })
+
+describe('every node shape the editor can emit resolves', () => {
+  // ⛔ The app lane does NOT emit framework-dialect `image`. An upload sets an
+  // editor-only attr (aspect_ratio), which promotes the node, so it stays
+  // `ImageBlock` — and videos stay `Video` for the same reason. A literal reading
+  // of "assetId on the image node" would leave every app-uploaded asset
+  // unresolvable. These pin the other shapes so a later cleanup cannot remove
+  // them as dead legacy tolerance. (Found from the consuming side by the app
+  // lane, reading the shipped resolver — not by this package's own tests.)
+
+  it('resolves on an editor ImageBlock node', () => {
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'ImageBlock', attrs: { assetId: ID, assetExt: 'png' } }],
+    }
+    const el = parseContent(doc, { assets: { url: TEMPLATE } }).sequence.find(
+      (e) => e.type === 'image'
+    )
+    expect(el.attrs.url).toBe(`https://cdn.example/x/${ID}/base.png`)
+  })
+
+  it('resolves on an editor Video node', () => {
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'Video', attrs: { assetId: ID, assetExt: 'mp4' } }],
+    }
+    const el = parseContent(doc, { assets: { url: TEMPLATE } }).sequence.find(
+      (e) => e.type === 'video'
+    )
+    expect(el.attrs.src).toBe(`https://cdn.example/x/${ID}/base.mp4`)
+  })
+
+  it('⭐ resolves an INLINE image — the path that shipped without options', () => {
+    // `processInlineElements` took no options at all, so an image sitting beside
+    // text in a paragraph reached `parseImgBlock` with none. It resolved for a
+    // hoisted image and silently fell back for an inline one — the same node,
+    // two answers, decided by whether it shared a paragraph with prose.
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'see ' },
+            { type: 'ImageBlock', attrs: { assetId: ID, assetExt: 'png' } },
+          ],
+        },
+      ],
+    }
+    const para = parseContent(doc, { assets: { url: TEMPLATE } }).sequence.find(
+      (e) => e.type === 'paragraph'
+    )
+    const img = para.children.find((c) => c.type === 'image')
+    expect(img.attrs.url).toBe(`https://cdn.example/x/${ID}/base.png`)
+  })
+
+  it('resolves an image inside a link', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'x' },
+            { type: 'image', attrs: { assetId: ID, assetExt: 'png' } },
+          ],
+        },
+      ],
+    }
+    const para = parseContent(doc, { assets: { url: TEMPLATE } }).sequence.find(
+      (e) => e.type === 'paragraph'
+    )
+    expect(para.children.find((c) => c.type === 'image').attrs.url).toBe(
+      `https://cdn.example/x/${ID}/base.png`
+    )
+  })
+})
