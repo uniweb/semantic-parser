@@ -180,7 +180,7 @@ function createSequenceElement(node, options = {}) {
             // same options as its parent. (`inset_block` and `blockquote` used
             // to drop it and now do the same — harmless while nothing here read
             // `options`, but an asset inside a blockquote would have lost its
-            // resolution template once one did.)
+            // resolution pattern once one did.)
             return {
                 type: "concept_block",
                 tag: attrs?.tag,
@@ -689,27 +689,27 @@ function processInlineElements(content, options = {}) {
 
 /**
  * Resolve a STORE-HELD asset (`assetId` + `assetExt`) through the host's
- * template — the current mechanism, and the one to reach for.
+ * URL pattern — the current mechanism, and the one to reach for.
  *
  * The host declares `config.assets.url` on the published payload; the runtime
  * hands it here as `options.assets.url`. We substitute `{id}` and `{ext}` and
- * do nothing else: the template names a host and carries the store's whole path
+ * do nothing else: the pattern names a host and carries the store's whole path
  * layout, so a framework package never composes a serve location or guesses an
  * origin — a host may move its assets without a framework release.
  *
  * ⛔ Three ways this returns '' — "unresolved", never a guess:
- *   - **no template** (the host declared none) — absent ⇒ absent
+ *   - **no pattern** (the host declared none) — absent ⇒ absent
  *   - **an unknown placeholder** — never emit a half-substituted URL
  *   - **`{ext}` with no `assetExt`** — `base.` is a broken URL that reads like
  *     a typo rather than a missing field
  *
  * Callers treat '' as "fall through to the next reference form", which is what
- * makes an id-bearing node safe to write before any deployment emits a template.
+ * makes an id-bearing node safe to write before any deployment emits a pattern.
  *
  * @param {string} assetId  - the store's opaque id (backend mints a sha256)
  * @param {string} assetExt - the extension, minted separately (never derived
  *                            from the id, which carries no extension)
- * @param {string} template - `config.assets.url`, e.g. `https://cdn/x/{id}/base.{ext}`
+ * @param {string} pattern - `config.assets.url`, e.g. `https://cdn/x/{id}/base.{ext}`
  * @returns {string} the resolved URL, or '' when it cannot be resolved
  */
 /**
@@ -741,11 +741,11 @@ export const ASSET_SLOTS = [
     { urls: ["preview"], id: "previewAssetId", ext: "previewAssetExt" },
 ];
 
-function resolveAssetUrl(assetId, assetExt, template) {
+function resolveAssetUrl(assetId, assetExt, pattern) {
     if (!assetId || typeof assetId !== "string") return "";
-    if (!template || typeof template !== "string") return "";
+    if (!pattern || typeof pattern !== "string") return "";
     let resolvable = true;
-    const url = template.replace(/\{(\w+)\}/g, (match, name) => {
+    const url = pattern.replace(/\{(\w+)\}/g, (match, name) => {
         if (name === "id") return assetId;
         if (name === "ext" && assetExt) return assetExt;
         resolvable = false;
