@@ -46,8 +46,8 @@ function flattenGroup(group) {
  * render time and at editor time — and nothing derived is ever stored, so a
  * change to a grouping rule retroactively re-reads every document that already
  * exists. Leaking these suppressions into the default path would silently
- * reshape every section body ever authored. `tests/grouping-default-path.test.js`
- * pins the default against that.
+ * reshape every section body ever authored.
+ * `tests/processors/always-items.test.js` pins the default against that.
  *
  * @param {Array} sequence Flat sequence of elements
  * @param {Object} options Parsing options
@@ -79,7 +79,9 @@ function processGroups(sequence, options = {}) {
     const groups = splitBySlices(sequence, options);
 
     // Process each group's structure (still nested internally)
-    const processedGroups = groups.map((group) => processGroupContent(group));
+    const processedGroups = groups.map((group) =>
+        processGroupContent(group, options)
+    );
 
     // Determine main vs items
     let mainGroup = null;
@@ -148,21 +150,23 @@ function splitBySlices(sequence, options = {}) {
             // we do NOT close the group. We let the heading merge with the image.
             const isBannerMerge = i === 1 && isBannerImage(sequence, 0);
 
-            // A new Heading Group starts a new visual block.
+            // A new headline stack starts a new visual block.
             // If we have gathered content in the current group, close it now.
             if (currentGroup.length > 0 && !isBannerMerge) {
                 groups.push(currentGroup);
                 currentGroup = [];
             }
 
-            // Consume the entire semantic heading block (Title + Subtitles)
-            // We reuse your smart readHeadingGroup logic here!
-            const headingBlock = readHeadingGroup(sequence, i, options);
-            currentGroup.push(...headingBlock);
+            // Consume exactly ONE headline stack (pretitle + title + subtitle
+            // lines). A longer contiguous run re-enters here on the next
+            // iteration and opens the next group.
+            const stack = readStack(sequence, i, options);
+            const consumed = Math.max(stack.length, 1);
+            currentGroup.push(...sequence.slice(i, i + consumed));
 
             // Advance the index by the number of headings consumed
-            // (Loop increments i by 1, so we add length - 1)
-            i += headingBlock.length - 1;
+            // (Loop increments i by 1, so we add consumed - 1)
+            i += consumed - 1;
         } else {
             // 3. Handle Content (Body)
             // Paragraphs, images, lists, etc. just append to the current slice.
@@ -179,16 +183,11 @@ function splitBySlices(sequence, options = {}) {
 }
 
 /**
- * Check if this is a pretitle - any heading followed by a more important heading
- * (e.g., H3→H1, H2→H1, H6→H5, etc.)
+ * A `#>` label line — a heading carrying `role: "pretitle"`. It names the
+ * block it opens (or sits in) and never competes for the title slot.
  */
-function isPreTitle(sequence, i) {
-    return (
-        i + 1 < sequence.length &&
-        sequence[i].type === "heading" &&
-        sequence[i + 1].type === "heading" &&
-        sequence[i].level > sequence[i + 1].level // Smaller heading before larger
-    );
+function isLabel(el) {
+    return el?.type === "heading" && el.attrs?.role === "pretitle";
 }
 
 function isBannerImage(sequence, i) {
@@ -200,69 +199,95 @@ function isBannerImage(sequence, i) {
     );
 }
 
-function readHeadingGroup(sequence, startIdx, options = {}) {
-    const elements = [sequence[startIdx]];
-    let hasGoneDeeper = false;
+/**
+ * Read ONE headline stack from a contiguous heading run — the staircase rule:
+ * each heading relates to the one before it. The same size extends the current
+ * part; one step smaller is the next line of the headline (the subtitle, then
+ * further subtitle lines); anything else — two or more steps down, or a step
+ * back up — ends the stack, and the rest of the run starts a new block.
+ *
+ * Before the title: `#>` label lines, and any smaller headings ascending to a
+ * more important one, are the pretitle. A label line anywhere in the stack
+ * also names the block — it never competes for the title.
+ *
+ * `alwaysItems` (a tagged concept block's grouping) suppresses the same-size
+ * continuation: two bodiless same-level headings are two ITEMS, not one
+ * heading split across visual lines. That suppression must happen HERE, at
+ * group formation — no amount of suppressing title promotion downstream can
+ * split a group that was never split. Descents still join: a concept-block
+ * item keeps its subtitle.
+ *
+ * @returns {{ pre: Array, title: Array, sub: Array, length: number }}
+ *   The slot elements and how many sequence elements the stack consumed.
+ */
+function readStack(sequence, startIdx, options = {}) {
+    const pre = [];
+    const title = [];
+    const sub = [];
+    let i = startIdx;
 
-    // Iterate starting from the next element
-    for (let i = startIdx + 1; i < sequence.length; i++) {
-        const element = sequence[i];
-        const previousElement = elements[elements.length - 1];
-
-        if (element.type !== "heading") {
-            break;
-        }
-
-        // Case 1: Adjacent Deeper (Standard Subtitle/Deep Header)
-        // Only group headings that are exactly one level apart.
-        // e.g. H1 -> H2 groups, but H1 -> H3 does not (skipped level
-        // signals a structural tier change, not a title-subtitle pair).
-        if (element.level - previousElement.level === 1) {
-            hasGoneDeeper = true;
-            elements.push(element);
-            continue;
-        }
-
-        // Case 2: Pretitle Promotion (Small -> Big)
-        // Only allowed if we haven't gone deep yet (length is 1)
-        // e.g. H2 -> H1
-        if (elements.length === 1 && element.level < previousElement.level) {
-            elements.push(element);
-            continue;
-        }
-
-        // Case 3: Same Level Continuation (multi-line heading)
-        // Only before going deeper — once a subtitle level is reached,
-        // same-level headings are new sections, not continuations.
-        // e.g. H1 -> H1 → merged into title array
-        // but H1 -> H2 -> H2 → second H2 starts a new group (items)
-        //
-        // Suppression 2 of 2 (`alwaysItems`): in a tagged concept block two
-        // same-level headings are two ITEMS, not one heading split across
-        // visual lines. Merging them is why bodiless headings collapse into a
-        // single group carrying a title ARRAY — and no amount of suppressing
-        // title promotion downstream can split what was never split here, which
-        // is what makes this the second half of a fix that looks like one line.
-        if (
-            element.level === previousElement.level &&
-            !hasGoneDeeper &&
-            !options.alwaysItems
-        ) {
-            elements.push(element);
-            continue;
-        }
-
-        // Otherwise (New Section — went deeper then back up, or
-        // same-level after going deeper), stop.
-        break;
+    // Leading `#>` label lines belong to this block's pretitle.
+    while (i < sequence.length && isLabel(sequence[i])) {
+        pre.push(sequence[i]);
+        i++;
     }
-    return elements;
+
+    // Ascending positional pretitle: smaller headings stacked directly above
+    // a more important one (e.g. #### / ### / # Title) all join the pretitle.
+    while (
+        i + 1 < sequence.length &&
+        sequence[i].type === "heading" &&
+        sequence[i + 1].type === "heading" &&
+        !isLabel(sequence[i + 1]) &&
+        sequence[i + 1].level < sequence[i].level
+    ) {
+        pre.push(sequence[i]);
+        i++;
+    }
+
+    // A label-only stack (labels followed by body, or nothing) is legal: the
+    // block has a pretitle and no title.
+    if (i >= sequence.length || sequence[i].type !== "heading") {
+        return { pre, title, sub, length: i - startIdx };
+    }
+
+    title.push(sequence[i]);
+    let prevLevel = sequence[i].level;
+    let part = title;
+    i++;
+
+    while (i < sequence.length && sequence[i].type === "heading") {
+        const el = sequence[i];
+        if (isLabel(el)) {
+            // A label inside the stack still names this block.
+            pre.push(el);
+            i++;
+        } else if (el.level === prevLevel && !options.alwaysItems) {
+            part.push(el); // another line of the same part
+            i++;
+        } else if (el.level === prevLevel + 1) {
+            sub.push(el); // the next line of the headline, one step down
+            part = sub;
+            prevLevel = el.level;
+            i++;
+        } else {
+            break; // two+ steps down, or back up: a new block starts here
+        }
+    }
+    return { pre, title, sub, length: i - startIdx };
+}
+
+/** Collapse a slot's texts: none → '', one → string, several → array. */
+function flattenSlot(texts) {
+    if (texts.length === 0) return "";
+    if (texts.length === 1) return texts[0];
+    return texts;
 }
 
 /**
  * Process a group's content to identify its structure
  */
-function processGroupContent(elements) {
+function processGroupContent(elements, options = {}) {
     const header = {
         pretitle: "",
         title: "",
@@ -298,46 +323,33 @@ function processGroupContent(elements) {
             metadata,
         };
 
-    // Track last assigned heading slot and level for same-level merging
-    let lastSlot = null;
-    let lastLevel = null;
-
-    for (let i = 0; i < elements.length; i++) {
-        //We shuold only set pretitle once
-        if (isPreTitle(elements, i) && !header.pretitle) {
-            header.pretitle = elements[i].text;
-            i++; // move to known next heading (H1 or h2)
+    // The group's leading heading run is its headline stack: read the slots
+    // with the same staircase rule that decided the group boundary, so the
+    // two walks cannot disagree.
+    let start = 0;
+    if (elements[0]?.type === "heading") {
+        const stack = readStack(elements, 0, options);
+        header.pretitle = flattenSlot(stack.pre.map((el) => el.text));
+        header.title = flattenSlot(stack.title.map((el) => el.text));
+        header.subtitle = flattenSlot(stack.sub.map((el) => el.text));
+        metadata.level = stack.title[0]?.level ?? null;
+        for (const el of [...stack.pre, ...stack.title, ...stack.sub]) {
+            if (el.children && Array.isArray(el.children))
+                processInlineElements(el.children, body);
         }
+        start = Math.max(stack.length, 1);
+    }
 
+    for (let i = start; i < elements.length; i++) {
         const element = elements[i];
 
         if (element.type === "heading") {
+            // Only reachable for nested content (blockquote children, list
+            // items), where headings can follow body inside one element
+            // array — section content is split into groups before this runs.
             if (element.children && Array.isArray(element.children))
                 processInlineElements(element.children, body);
-
-            //We shuold set the group level to the highest one instead of the first one.
-            metadata.level ??= element.level;
-
-            // Same level as last assigned → merge into same slot as array
-            if (lastLevel !== null && element.level === lastLevel && lastSlot) {
-                const current = header[lastSlot];
-                if (Array.isArray(current)) {
-                    current.push(element.text);
-                } else {
-                    header[lastSlot] = [current, element.text];
-                }
-            } else if (!header.title) {
-                header.title = element.text;
-                lastSlot = 'title';
-            } else if (!header.subtitle) {
-                header.subtitle = element.text;
-                lastSlot = 'subtitle';
-            } else {
-                // After subtitle, remaining headings go to body
-                body.headings.push(element.text);
-                lastSlot = null;
-            }
-            lastLevel = element.level;
+            body.headings.push(element.text);
         } else if (element.type === "list") {
             const listItems = element.children;
 

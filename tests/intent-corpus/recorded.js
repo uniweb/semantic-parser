@@ -144,12 +144,12 @@ export const recorded = {
     },
     "roster-two-level": {
         "title": "Our Team",
-        "subtitle": "Engineering",
+        "subtitle": [
+            "Engineering",
+            "Alice"
+        ],
         "paragraphs": [
             "bio a"
-        ],
-        "headings": [
-            "Alice"
         ],
         "items": [
             {
@@ -169,12 +169,12 @@ export const recorded = {
     },
     "faq-categories": {
         "title": "FAQ",
-        "subtitle": "Billing",
+        "subtitle": [
+            "Billing",
+            "How much?"
+        ],
         "paragraphs": [
             "a"
-        ],
-        "headings": [
-            "How much?"
         ],
         "items": [
             {
@@ -194,12 +194,12 @@ export const recorded = {
     },
     "resume-adjacent": {
         "title": "Experience",
-        "subtitle": "Google",
+        "subtitle": [
+            "Google",
+            "2020–now"
+        ],
         "paragraphs": [
             "Built things."
-        ],
-        "headings": [
-            "2020–now"
         ],
         "items": [
             {
@@ -213,15 +213,15 @@ export const recorded = {
     },
     "subtitle-then-items": {
         "title": "Work History",
-        "subtitle": "A summary of my roles.",
+        "subtitle": [
+            "A summary of my roles.",
+            "Google",
+            "2020–now"
+        ],
+        "paragraphs": [
+            "x"
+        ],
         "items": [
-            {
-                "title": "Google",
-                "subtitle": "2020–now",
-                "paragraphs": [
-                    "x"
-                ]
-            },
             {
                 "title": "Facebook",
                 "subtitle": "2018–2020",
@@ -266,17 +266,13 @@ export const recorded = {
         ]
     },
     "stacked-pretitle": {
-        "items": [
-            {
-                "pretitle": "ACME LABS",
-                "title": "ANNOUNCING"
-            },
-            {
-                "title": "Titan",
-                "paragraphs": [
-                    "Lead."
-                ]
-            }
+        "pretitle": [
+            "ACME LABS",
+            "ANNOUNCING"
+        ],
+        "title": "Titan",
+        "paragraphs": [
+            "Lead."
         ]
     },
     "pricing-tiers": {
@@ -310,22 +306,22 @@ export const recorded = {
     },
     "three-line-header": {
         "title": "Ada Lovelace",
-        "subtitle": "Chief Scientist",
+        "subtitle": [
+            "Chief Scientist",
+            "Analytical Engines Ltd"
+        ],
         "paragraphs": [
             "Short bio."
-        ],
-        "headings": [
-            "Analytical Engines Ltd"
         ]
     },
     "event-cover": {
         "title": "DevConf 2027",
-        "subtitle": "June 12 – 14",
+        "subtitle": [
+            "June 12 – 14",
+            "Lisbon"
+        ],
         "paragraphs": [
             "Call for papers is open."
-        ],
-        "headings": [
-            "Lisbon"
         ]
     },
     "stepped-items-under-subtitle": {
@@ -344,6 +340,36 @@ export const recorded = {
                 "subtitle": "2018–2020",
                 "paragraphs": [
                     "y"
+                ]
+            }
+        ]
+    },
+    "label-on-item": {
+        "title": "Pricing",
+        "paragraphs": [
+            "Plans that grow with you."
+        ],
+        "items": [
+            {
+                "pretitle": "Most popular",
+                "title": "Pro",
+                "subtitle": "$29 / month",
+                "paragraphs": [
+                    "Everything in Free."
+                ]
+            }
+        ]
+    },
+    "label-untitled": {
+        "pretitle": "Case study",
+        "paragraphs": [
+            "Three teams, one launch date."
+        ],
+        "items": [
+            {
+                "title": "Week one",
+                "paragraphs": [
+                    "We scoped the work."
                 ]
             }
         ]

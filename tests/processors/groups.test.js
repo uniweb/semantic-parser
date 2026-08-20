@@ -47,11 +47,13 @@ describe("processGroups", () => {
         const sequence = processSequence(nestedHeadings);
         const result = processGroups(sequence);
 
-        // Flat structure at root
+        // The staircase headline: each further one-step descent is another
+        // subtitle LINE, so a three-line header (title + two descending
+        // lines) is expressible. Nothing spills into the headings[] overflow.
         expect(result.pretitle).toBe("WELCOME");
         expect(result.title).toBe("Main Title");
-        expect(result.subtitle).toBe("Subtitle");
-        expect(result.headings[0]).toBe("Subsubtitle");
+        expect(result.subtitle).toEqual(["Subtitle", "Subsubtitle"]);
+        expect(result.headings).toHaveLength(0);
     });
 
     test("handles multiple H1s by not creating main content", () => {
@@ -81,35 +83,40 @@ describe("processGroups", () => {
         expect(result.items[1].title).toBe("Masters in Data");
     });
 
-    test("handles 'Leaf vs Branch' heuristic (H1 -> H2 Subtitle -> H2 Item)", () => {
-        // Case: First H2 is a "Leaf" (no kids), Second H2 is a "Branch" (has H3 kids)
-        // Expected: First H2 merges into Main. Second H2 starts new Item.
+    test("a bodiless run under the title joins the headline (staircase)", () => {
+        // [H1, H2, H2, H3, H2, H3]: with nothing between them, the same-size
+        // and one-step headings all continue the headline — subtitle lines —
+        // until Facebook steps back up and starts an item. This is the
+        // language's one uniform misfire when the entries were MEANT as
+        // items; the canonical spellings are a lead paragraph, a divider, or
+        // two-step entries (see intent-corpus stepped-items-under-subtitle).
         const sequence = processSequence(subtitleAndItems);
         const result = processGroups(sequence);
 
         expect(result.title).toBe("Work History");
-        expect(result.subtitle).toBe("A summary of my roles."); // MERGED
+        expect(result.subtitle).toEqual([
+            "A summary of my roles.",
+            "Google",
+            "2020-Present",
+        ]);
 
-        expect(result.items).toHaveLength(2);
-        expect(result.items[0].title).toBe("Google"); // SPLIT
-        expect(result.items[0].subtitle).toBe("2020-Present");
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].title).toBe("Facebook");
+        expect(result.items[0].subtitle).toBe("2018-2020");
     });
 
-    test("handles complex hierarchy (Pretitle + H1 + Subtitle + Items)", () => {
+    test("handles complex hierarchy (pretitle + contiguous descending run)", () => {
         const sequence = processSequence(complexHierarchy);
         const result = processGroups(sequence);
 
-        // Check Pretitle merging
         expect(result.pretitle).toBe("INTRO");
         expect(result.title).toBe("About Me");
 
-        // Check Subtitle merging (Leaf H2)
-        expect(result.subtitle).toBe("Short Bio");
-
-        // Check Items (Branch H2)
-        expect(result.items).toHaveLength(1);
-        expect(result.items[0].title).toBe("My Hobbies");
-        expect(result.items[0].subtitle).toBe("Reading");
+        // All contiguous same-size and one-step headings continue the
+        // headline. Items require a body break, a divider, or a two-step
+        // drop — none of which this run contains.
+        expect(result.subtitle).toEqual(["Short Bio", "My Hobbies", "Reading"]);
+        expect(result.items).toHaveLength(0);
     });
 
     test("handles simple lists with no main container", () => {

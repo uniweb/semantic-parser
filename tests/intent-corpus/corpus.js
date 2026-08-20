@@ -17,6 +17,12 @@ const h = (level, text) => ({
     attrs: { level },
     content: [{ type: "text", text }],
 });
+// A `#>` label line — a heading carrying role: "pretitle" on the wire.
+const label = (text) => ({
+    type: "heading",
+    attrs: { level: 1, role: "pretitle" },
+    content: [{ type: "text", text }],
+});
 const p = (text) => ({
     type: "paragraph",
     content: [{ type: "text", text }],
@@ -561,6 +567,62 @@ y`,
             ],
         },
         note: "The two-step spelling for items directly under a bodiless subtitle. Parses to intent already — guards the canonical spelling.",
+    },
+
+    {
+        name: "label-on-item",
+        intent:
+            "A `#>` label line names the item that starts next — its pretitle, with no level arithmetic.",
+        source: `# Pricing
+Plans that grow with you.
+#> Most popular
+### Pro
+#### $29 / month
+Everything in Free.`,
+        doc: doc(
+            h(1, "Pricing"),
+            p("Plans that grow with you."),
+            label("Most popular"),
+            h(3, "Pro"),
+            h(4, "$29 / month"),
+            p("Everything in Free.")
+        ),
+        intended: {
+            title: "Pricing",
+            paragraphs: ["Plans that grow with you."],
+            items: [
+                {
+                    pretitle: "Most popular",
+                    title: "Pro",
+                    subtitle: "$29 / month",
+                    paragraphs: ["Everything in Free."],
+                },
+            ],
+        },
+        note: "Guards label-binds-forward: the label opens the block it names.",
+    },
+
+    {
+        name: "label-untitled",
+        intent:
+            "A `#>` label above an untitled section labels the untitled main body.",
+        source: `#> Case study
+Three teams, one launch date.
+
+## Week one
+We scoped the work.`,
+        doc: doc(
+            label("Case study"),
+            p("Three teams, one launch date."),
+            h(2, "Week one"),
+            p("We scoped the work.")
+        ),
+        intended: {
+            pretitle: "Case study",
+            paragraphs: ["Three teams, one launch date."],
+            items: [{ title: "Week one", paragraphs: ["We scoped the work."] }],
+        },
+        note: "Positional pretitle cannot express this: a lone small heading would have become the title.",
     },
 
     {
