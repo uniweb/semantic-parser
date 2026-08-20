@@ -487,6 +487,83 @@ students reached`,
     },
 
     {
+        name: "three-line-header",
+        intent:
+            "A three-line header — name, role, affiliation. The title plus two descending subtitle lines.",
+        source: `# Ada Lovelace
+## Chief Scientist
+### Analytical Engines Ltd
+
+Short bio.`,
+        doc: doc(
+            h(1, "Ada Lovelace"),
+            h(2, "Chief Scientist"),
+            h(3, "Analytical Engines Ltd"),
+            p("Short bio.")
+        ),
+        intended: {
+            title: "Ada Lovelace",
+            subtitle: ["Chief Scientist", "Analytical Engines Ltd"],
+            paragraphs: ["Short bio."],
+        },
+        note: "Needs the headline to absorb descending lines into a subtitle array. Currently the third line lands in the headings[] overflow.",
+    },
+
+    {
+        name: "event-cover",
+        intent: "An event cover: name, dates, venue as the headline.",
+        source: `# DevConf 2027
+## June 12 – 14
+### Lisbon
+
+Call for papers is open.`,
+        doc: doc(
+            h(1, "DevConf 2027"),
+            h(2, "June 12 – 14"),
+            h(3, "Lisbon"),
+            p("Call for papers is open.")
+        ),
+        intended: {
+            title: "DevConf 2027",
+            subtitle: ["June 12 – 14", "Lisbon"],
+            paragraphs: ["Call for papers is open."],
+        },
+    },
+
+    {
+        name: "stepped-items-under-subtitle",
+        intent:
+            "A subtitle directly under the title, then entries stepped two sizes below the subtitle — no lead paragraph needed.",
+        source: `# Work History
+## A summary of my roles.
+#### Google
+##### 2020–now
+x
+#### Meta
+##### 2018–2020
+y`,
+        doc: doc(
+            h(1, "Work History"),
+            h(2, "A summary of my roles."),
+            h(4, "Google"),
+            h(5, "2020–now"),
+            p("x"),
+            h(4, "Meta"),
+            h(5, "2018–2020"),
+            p("y")
+        ),
+        intended: {
+            title: "Work History",
+            subtitle: "A summary of my roles.",
+            items: [
+                { title: "Google", subtitle: "2020–now", paragraphs: ["x"] },
+                { title: "Meta", subtitle: "2018–2020", paragraphs: ["y"] },
+            ],
+        },
+        note: "The two-step spelling for items directly under a bodiless subtitle. Parses to intent already — guards the canonical spelling.",
+    },
+
+    {
         name: "docs-outline",
         intent:
             "Prose documentation with an ordinary heading outline. Consumed through `sequence`; the grouped shape is incidental but must not drift silently.",

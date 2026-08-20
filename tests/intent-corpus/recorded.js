@@ -308,6 +308,46 @@ export const recorded = {
             "students reached"
         ]
     },
+    "three-line-header": {
+        "title": "Ada Lovelace",
+        "subtitle": "Chief Scientist",
+        "paragraphs": [
+            "Short bio."
+        ],
+        "headings": [
+            "Analytical Engines Ltd"
+        ]
+    },
+    "event-cover": {
+        "title": "DevConf 2027",
+        "subtitle": "June 12 – 14",
+        "paragraphs": [
+            "Call for papers is open."
+        ],
+        "headings": [
+            "Lisbon"
+        ]
+    },
+    "stepped-items-under-subtitle": {
+        "title": "Work History",
+        "subtitle": "A summary of my roles.",
+        "items": [
+            {
+                "title": "Google",
+                "subtitle": "2020–now",
+                "paragraphs": [
+                    "x"
+                ]
+            },
+            {
+                "title": "Meta",
+                "subtitle": "2018–2020",
+                "paragraphs": [
+                    "y"
+                ]
+            }
+        ]
+    },
     "docs-outline": {
         "title": "Guide",
         "paragraphs": [
