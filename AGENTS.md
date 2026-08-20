@@ -12,17 +12,14 @@ This is a semantic parser for ProseMirror/TipTap content structures. It transfor
 # Run all tests
 npm test
 
-# Run tests with JSON report output
-npm run test-report
-
 # Run a specific test file
-npx jest tests/parser.test.js
+npx vitest run tests/parser.test.js
 
 # Run tests in watch mode
-npx jest --watch
+npx vitest
 
 # Run a specific test by name
-npx jest -t "handles simple document structure"
+npx vitest run -t "handles simple document structure"
 ```
 
 ## Architecture
@@ -33,9 +30,7 @@ The parser processes content through three distinct stages, each building on the
 
 1. **Sequence Processing** (`src/processors/sequence.js`): Flattens the ProseMirror document tree into a linear sequence of semantic elements (headings, paragraphs, images, lists, etc.)
 
-2. **Groups Processing** (`src/processors/groups.js`): Transforms the sequence into semantic groups with identified main content and items. Supports two grouping modes:
-   - Heading-based grouping (default)
-   - Divider-based grouping (when horizontal rules are present)
+2. **Groups Processing** (`src/processors/groups.js`): Transforms the sequence into semantic groups with identified main content and items. Headings split groups via the staircase headline rule; a horizontal rule explicitly closes the current group — the two compose, there are no separate modes.
 
 3. **ByType Processing** (`src/processors/byType.js`): Organizes elements by type with positional context, enabling type-specific queries
 
@@ -47,8 +42,7 @@ const result = parseContent(doc);
 // {
 //   raw: doc,        // Original ProseMirror document
 //   sequence: [...], // Flat sequence of elements
-//   groups: {...},   // Semantic groups with main/items
-//   byType: {...}    // Elements organized by type
+//   title, pretitle, subtitle, paragraphs, items, ...  // flat content fields
 // }
 ```
 
@@ -59,8 +53,8 @@ The parser returns a flat content structure:
 ```js
 {
   title: '',       // Main heading
-  pretitle: '',    // Heading before main title
-  subtitle: '',    // Heading after main title
+  pretitle: '',    // `#>` label line(s) or smaller headings above the title
+  subtitle: '',    // Line(s) one step below the title (string or array)
   paragraphs: [],
   links: [],       // All link-like entities (including buttons, documents)
   images: [],
@@ -70,7 +64,7 @@ The parser returns a flat content structure:
   quotes: [],
   snippets: [],    // Fenced code — [{ language, code }]
   data: {},        // Structured data (tagged data blocks, forms, cards)
-  headings: [],    // Headings after subtitle, in document order
+  headings: [],    // Only from nested content (quote/list bodies)
   items: [],       // Child content groups (same structure recursively)
 }
 ```
@@ -106,10 +100,10 @@ FormBlock without a `schemaId` still lands at `data.form`.
 
 ### Main Content Identification
 
-The `identifyMainContent()` function (src/processors/groups.js:282) determines if the first group should be treated as main content:
+The `identifyMainContent()` function in `src/processors/groups.js` determines if the first group should be treated as main content:
 - Single group is always main content
-- First group must have lower heading level than second group
-- Divider mode affects main content identification
+- First group must have a more important (lower) heading level than the second group
+- A first group with no heading at all (body before the first heading) is also promoted to main
 
 ### Special Element Detection
 
@@ -165,14 +159,15 @@ Lists maintain hierarchy through nested structure. The `processListItems()` func
 
 ## Content Writing Conventions
 
-Key patterns:
+Key patterns — the staircase rule (each heading relates to the one before it):
 
-- **Pretitle Pattern**: Any heading followed by a more important heading (e.g., H3→H1, H2→H1, H6→H5, etc.)
-- **Banner Pattern**: Image (with banner role or followed by heading) at start of first group
-- **Divider Mode**: Presence of any `horizontalRule` switches entire document to divider-based grouping
-- **Heading Groups**: Consecutive headings are consumed together only when each is exactly one level deeper (H1→H2 yes, H1→H3 no — skipped levels start a new group)
-- **Main Content**: First group is main if it's the only group OR has lower heading level than second group
-- **Body Headings**: Headings after the title and subtitle slots are collected in `body.headings` in document order
+- **Pretitle**: `#>` label lines (headings with `role: "pretitle"`), and smaller headings stacked directly above a more important one (H3→H1, H6→H5, …). String or array.
+- **Subtitle**: one step below the title, directly adjacent — and each further one-step descent (or same-size repeat) is another subtitle line. String or array.
+- **Items**: a heading two or more steps below the previous one, a step back up, or any heading after body content starts a new group.
+- **Banner Pattern**: an image (with banner role or followed by a heading) at the start of the first group stays with the headline.
+- **Dividers**: a `horizontalRule` explicitly closes the current group; it composes with the heading rules rather than replacing them.
+- **Main Content**: the first group is main if it's the only group, has a more important heading level than the second group, or has no heading at all.
+- **Body Headings**: `body.headings` fills only from nested content (blockquote children, list items) — a section's headline never spills there.
 
 ## Testing Structure
 
@@ -189,4 +184,4 @@ Tests are organized by processor:
 - The parser never modifies the original ProseMirror document
 - Text content can include inline HTML for formatting (bold → `<strong>`, italic → `<em>`, links → `<a>`)
 - Context information in byType includes position, previous/next elements, and nearest heading
-- Group splitting logic differs significantly between heading mode and divider mode
+- Headline slots and group boundaries come from one walk (`readStack`), so the two cannot disagree

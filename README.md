@@ -64,10 +64,11 @@ Main content fields are at the top level. The `items` array contains additional 
 
 ```js
 result = {
-  // Header fields (from headings)
-  pretitle: "",             // Heading before main title
+  // Header fields (from headings) — each is a string, or an array when the
+  // part spans several lines
+  pretitle: "",             // `#>` label line(s), or smaller headings above the title
   title: "Welcome",         // Main heading
-  subtitle: "",             // Heading after main title
+  subtitle: "",             // Line(s) one step below the title
 
   // Body fields
   paragraphs: ["Get started today."],
@@ -80,7 +81,7 @@ result = {
   insets: [],               // Inline @Component references — { refId }
   snippets: [],             // Fenced code blocks — { language, code }
   data: {},                 // Structured data (tagged data blocks, forms, cards)
-  headings: [],             // Headings after subtitle, in document order
+  headings: [],             // Only from nested content (quote/list bodies)
 
   // Additional content groups (from headings after content)
   // Each item has the SAME flat structure as the top level — title,
@@ -108,7 +109,7 @@ const content = parseContent(doc);
 
 const title = content.title;
 const description = content.paragraphs.join(" ");
-const image = content.banner?.url;
+const image = content.images[0]?.src;
 ```
 
 ### Processing Content Sections
@@ -155,13 +156,13 @@ The parser interprets heading levels **relatively**, not absolutely. There is no
 
 A new group is started whenever a heading appears after non-heading content (paragraphs, images, links, lists, etc.). A horizontal rule (`---`) explicitly closes the current group.
 
-When a group begins with one or more headings, the parser consumes a contiguous **heading block** following these rules:
+When a group begins with headings, the parser reads one **headline stack** with the staircase rule — each heading relates to the one before it:
 
-1. **Adjacent deeper** — the next heading is exactly one level deeper (e.g., H1→H2, H2→H3). It becomes the `subtitle`. Skipping levels (H1→H3) breaks the block; the deeper heading starts a new group as an item.
-2. **Pretitle promotion** — if the very first heading is followed by a *more important* (lower-numbered) heading, the first one becomes `pretitle` and the next becomes `title`. This only applies at the start of the block.
-3. **Same-level continuation** — consecutive headings at the same level merge into an array (multi-line title or subtitle). This stops once a deeper level has been reached: after going deeper, a same-level heading starts a new group instead of merging.
+1. **Same size** — another line of the same part: a split title, or another subtitle line. Merged slots become arrays.
+2. **One step smaller** — the next line of the headline: the subtitle first, then further subtitle lines (`subtitle` is a string for one line, an array for several — a three-line header like name / role / affiliation fits in one headline).
+3. **Two or more steps smaller, or a step back up** — the stack ends; the rest of the run starts a new group (an item), read the same way.
 
-Anything else (going back up after going deeper, or any other gap) breaks the block.
+Before the title, `#>` label lines (headings carrying `role: "pretitle"`) and smaller headings ascending to a more important one all join the `pretitle`. A label line anywhere names the block it sits in; a label with no following heading labels an untitled block.
 
 ### Main content vs items
 
@@ -176,14 +177,10 @@ This is the mechanism that creates repeating content groups (cards, features, FA
 
 ### Pretitle detection
 
-A heading followed by a more important heading at the start of a group is detected as `pretitle`:
+Two spellings fill the `pretitle` slot:
 
-- H3 before H1 → pretitle
-- H2 before H1 → pretitle
-- H6 before H5 → pretitle
-- H4 before H2 → pretitle
-
-Pretitle is detected only between the first two headings of a heading block (before the title is set).
+- **A `#>` label line** — a heading with `role: "pretitle"`. It names the block that starts next, at any depth, with no level arithmetic; the hash count is carried for round-tripping and means nothing.
+- **Position** — headings followed by a more important heading at the start of a group (H3 before H1, H6 before H5, …). Stacked smaller headings all join: `#### / ### / # Title` yields a two-line pretitle.
 
 ### Banner image
 
@@ -193,7 +190,7 @@ If a section's very first element is an image (or an image followed immediately 
 
 A horizontal rule (`---`) explicitly closes the current group and starts a new one. Dividers compose with the heading rules above — they don't replace them — and are useful in three situations:
 
-- **Resolving ambiguity.** When the heading rules would group content one way but you want it grouped another way. Most common case: forcing items without a subtitle. Without a divider, `# Our Stats` followed by `## 15,000+` makes `## 15,000+` the subtitle (one level deeper). Adding `---` between them closes the title group so `## 15,000+` becomes `items[0].title` instead.
+- **Resolving ambiguity.** When the heading rules would group content one way but you want it grouped another way. Most common case: forcing items without a subtitle. Without a divider, `# Our Stats` followed by `## 15,000+` makes `## 15,000+` the subtitle (one step down). Adding `---` between them closes the headline so `## 15,000+` becomes `items[0].title` instead — as does writing the entries two steps down (`### 15,000+`), the divider-free spelling.
 - **Forcing splits within same-level runs.** Same-level headings that would otherwise merge into a multi-line title/subtitle become separate groups when separated by a divider.
 - **Personal preference.** Even when the heading rules would already produce the desired structure, authors can use `---` as an explicit visual separator between groups. It never changes a structure that's already correct — it just makes the boundary obvious in the markdown source.
 
