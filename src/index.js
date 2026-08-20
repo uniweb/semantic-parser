@@ -1,6 +1,7 @@
 import { processSequence, resolveAssetUrl, ASSET_SLOTS } from "./processors/sequence.js";
 import { processGroups } from "./processors/groups.js";
 import { buildDoc } from "./builders/doc.js";
+import { lintContent } from "./lint.js";
 
 /**
  * Parse ProseMirror/TipTap content into semantic structure
@@ -50,4 +51,7 @@ function parseContent(doc, options = {}) {
 // parse (the editor, a kit component) reaches THIS implementation rather than
 // writing a second one. A duplicated selector is this repo's most-repeated
 // defect; one exported function is the cheapest guard against it.
-export { parseContent, buildDoc, resolveAssetUrl, ASSET_SLOTS };
+// `lintContent` diagnoses grouping near-misses (see src/lint.js). It never
+// affects a parse — parsing stays deterministic; the judgment lives here so
+// the CLI, the dev server, and an editor surface the same findings.
+export { parseContent, buildDoc, resolveAssetUrl, ASSET_SLOTS, lintContent };

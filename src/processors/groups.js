@@ -590,4 +590,8 @@ function processInlineElements(children, body) {
     });
 }
 
-export { processGroups };
+// `splitBySlices` and `readStack` are exported for `lintContent` (src/lint.js),
+// which diagnoses grouping near-misses and must see the SAME walk that decided
+// the groups — a private reimplementation there would drift. They are not part
+// of the package's public API.
+export { processGroups, splitBySlices, readStack };
