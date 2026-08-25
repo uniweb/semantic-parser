@@ -626,6 +626,24 @@ We scoped the work.`,
     },
 
     {
+        name: "descending-pretitle-stack",
+        intent:
+            "A two-line pretitle written top-down — the larger line first — above the title.",
+        source: `## Acme Labs
+### Announcing
+# Titan
+
+Lead.`,
+        doc: doc(h(2, "Acme Labs"), h(3, "Announcing"), h(1, "Titan"), p("Lead.")),
+        intended: {
+            pretitle: ["Acme Labs", "Announcing"],
+            title: "Titan",
+            paragraphs: ["Lead."],
+        },
+        note: "The mirror of stacked-pretitle. An ascending-only prefix rule read this as a bodiless headline plus a bigger heading and demoted the title into the items.",
+    },
+
+    {
         name: "docs-outline",
         intent:
             "Prose documentation with an ordinary heading outline. Consumed through `sequence`; the grouped shape is incidental but must not drift silently.",

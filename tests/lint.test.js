@@ -34,6 +34,7 @@ const EXPECTED = {
     "subtitle-and-peer-cards": ["first-entry-or-subtitle"], // documented false-fire
     "paragraph-eyebrow": ["label-as-text"],
     "stacked-pretitle": [],
+    "descending-pretitle-stack": [],
     "pricing-tiers": [],
     "single-item": [], // truly ambiguous with hero-minimal; nothing to key on
     "docs-outline": [],

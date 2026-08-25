@@ -232,15 +232,20 @@ function readStack(sequence, startIdx, options = {}) {
         i++;
     }
 
-    // Ascending positional pretitle: smaller headings stacked directly above
-    // a more important one (e.g. #### / ### / # Title) all join the pretitle.
-    while (
-        i + 1 < sequence.length &&
-        sequence[i].type === "heading" &&
-        sequence[i + 1].type === "heading" &&
-        !isLabel(sequence[i + 1]) &&
-        sequence[i + 1].level < sequence[i].level
-    ) {
+    // Positional pretitle: the title is the FIRST occurrence of the run's most
+    // important level; every smaller heading stacked above it joins the
+    // pretitle, in whatever order they were written (#### / ### / # and
+    // ## / ### / # both give a two-line pretitle). An ascending-only walk
+    // read a descending stack as a bodiless headline followed by a bigger
+    // heading, which demoted the real title into the items.
+    let best = i;
+    for (let k = i; k < sequence.length; k++) {
+        const el = sequence[k];
+        if (el.type !== "heading") break;
+        if (isLabel(el)) continue;
+        if (el.level < sequence[best].level || isLabel(sequence[best])) best = k;
+    }
+    while (i < best) {
         pre.push(sequence[i]);
         i++;
     }

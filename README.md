@@ -162,7 +162,7 @@ When a group begins with headings, the parser reads one **headline stack** with 
 2. **One step smaller** — the next line of the headline: the subtitle first, then further subtitle lines (`subtitle` is a string for one line, an array for several — a three-line header like name / role / affiliation fits in one headline).
 3. **Two or more steps smaller, or a step back up** — the stack ends; the rest of the run starts a new group (an item), read the same way.
 
-Before the title, `#>` label lines (headings carrying `role: "pretitle"`) and smaller headings ascending to a more important one all join the `pretitle`. A label line anywhere names the block it sits in; a label with no following heading labels an untitled block.
+Before the title, `#>` label lines (headings carrying `role: "pretitle"`) and every smaller heading stacked above the most important one — in whatever order — join the `pretitle`. A label line anywhere names the block it sits in; a label with no following heading labels an untitled block.
 
 ### Main content vs items
 
@@ -180,7 +180,7 @@ This is the mechanism that creates repeating content groups (cards, features, FA
 Two spellings fill the `pretitle` slot:
 
 - **A `#>` label line** — a heading with `role: "pretitle"`. It names the block that starts next, at any depth, with no level arithmetic; the hash count is carried for round-tripping and means nothing.
-- **Position** — headings followed by a more important heading at the start of a group (H3 before H1, H6 before H5, …). Stacked smaller headings all join: `#### / ### / # Title` yields a two-line pretitle.
+- **Position** — smaller headings stacked above the most important heading of a run (H3 before H1, H6 before H5, …), in any order. `#### / ### / # Title` and `## / ### / # Title` both yield a two-line pretitle.
 
 ### Banner image
 

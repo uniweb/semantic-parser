@@ -374,6 +374,16 @@ export const recorded = {
             }
         ]
     },
+    "descending-pretitle-stack": {
+        "pretitle": [
+            "Acme Labs",
+            "Announcing"
+        ],
+        "title": "Titan",
+        "paragraphs": [
+            "Lead."
+        ]
+    },
     "docs-outline": {
         "title": "Guide",
         "paragraphs": [
