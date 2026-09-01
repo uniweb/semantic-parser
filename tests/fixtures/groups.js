@@ -293,27 +293,26 @@ export const taggedJsonBlocks = {
             type: "paragraph",
             content: [{ type: "text", text: "Site navigation links." }],
         },
-        // Tagged JSON block
+        // Tagged JSON block, pre-parsed by content-reader
         {
-            type: "codeBlock",
-            attrs: { language: "json", tag: "nav-links" },
-            content: [
-                {
-                    type: "text",
-                    text: '[{"label": "Home", "href": "/"}, {"label": "About", "href": "/about"}]',
-                },
-            ],
+            type: "dataBlock",
+            attrs: {
+                language: "json",
+                tag: "nav-links",
+                data: [
+                    { label: "Home", href: "/" },
+                    { label: "About", href: "/about" },
+                ],
+            },
         },
         // Another tagged block with different tag
         {
-            type: "codeBlock",
-            attrs: { language: "json", tag: "settings" },
-            content: [
-                {
-                    type: "text",
-                    text: '{"theme": "dark", "showLogo": true}',
-                },
-            ],
+            type: "dataBlock",
+            attrs: {
+                language: "json",
+                tag: "settings",
+                data: { theme: "dark", showLogo: true },
+            },
         },
     ],
 };
@@ -328,14 +327,16 @@ export const taggedYamlBlocks = {
             content: [{ type: "text", text: "Config" }],
         },
         {
-            type: "codeBlock",
-            attrs: { language: "yaml", tag: "site-config" },
-            content: [
-                {
-                    type: "text",
-                    text: "title: My Site\ntheme: dark\nfeatures:\n  - seo\n  - analytics",
+            type: "dataBlock",
+            attrs: {
+                language: "yaml",
+                tag: "site-config",
+                data: {
+                    title: "My Site",
+                    theme: "dark",
+                    features: ["seo", "analytics"],
                 },
-            ],
+            },
         },
     ],
 };
@@ -579,16 +580,14 @@ export const mixedCodeBlocks = {
             attrs: { level: 1 },
             content: [{ type: "text", text: "Component" }],
         },
-        // Tagged block -> data (parsed)
+        // Tagged block -> data (pre-parsed by content-reader)
         {
-            type: "codeBlock",
-            attrs: { language: "json", tag: "team-member" },
-            content: [
-                {
-                    type: "text",
-                    text: '{"name": "Sarah", "role": "Engineer"}',
-                },
-            ],
+            type: "dataBlock",
+            attrs: {
+                language: "json",
+                tag: "team-member",
+                data: { name: "Sarah", role: "Engineer" },
+            },
         },
         // Untagged block -> stays in sequence only (not parsed as data)
         {
@@ -598,6 +597,30 @@ export const mixedCodeBlocks = {
                 {
                     type: "text",
                     text: '{"example": "code"}',
+                },
+            ],
+        },
+    ],
+};
+
+// A tagged code block that content-reader could NOT parse. It emits this shape
+// only when `parseCodeBlockData` returned null, so the text is not valid JSON
+// or YAML — the tag still routes it to `data[tag]`, carrying the raw string.
+export const unparsedTaggedBlock = {
+    type: "doc",
+    content: [
+        {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Config" }],
+        },
+        {
+            type: "codeBlock",
+            attrs: { language: "yaml", tag: "site-config" },
+            content: [
+                {
+                    type: "text",
+                    text: "title: My Site\n  bad: [indent",
                 },
             ],
         },

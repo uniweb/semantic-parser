@@ -1,16 +1,3 @@
-import { parse as parseYaml } from "yaml";
-
-/**
- * Get code block data - prefers pre-parsed attrs.data, falls back to parsing text
- *
- * Content can come from two sources:
- * 1. Pre-parsed at build time: attrs.data contains parsed JS object
- * 2. Legacy/runtime: text needs to be parsed based on language
- *
- * @param {string} text - Raw code block text
- * @param {Object} attrs - Code block attributes (language, tag, data)
- * @returns {*} Parsed data or raw text
- */
 /**
  * HTML-attribute encoding for values placed inside double-quoted
  * attributes. Backslashes and braces (common in LaTeX) pass through
@@ -26,42 +13,6 @@ function escapeAttr(s) {
         .replace(/"/g, "&quot;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
-}
-
-function getCodeBlockData(text, attrs) {
-    const { language, tag, data } = attrs || {};
-
-    // Only process tagged blocks
-    if (!tag) {
-        return text;
-    }
-
-    // Prefer pre-parsed data from build time (attrs.data)
-    if (data !== undefined) {
-        return data;
-    }
-
-    // Fallback: parse text at runtime (for backwards compatibility)
-    const lang = (language || "").toLowerCase();
-
-    if (lang === "json") {
-        try {
-            return JSON.parse(text);
-        } catch {
-            return text;
-        }
-    }
-
-    if (lang === "yaml" || lang === "yml") {
-        try {
-            return parseYaml(text);
-        } catch {
-            return text;
-        }
-    }
-
-    // Unknown language - return raw text
-    return text;
 }
 
 /**
@@ -172,9 +123,10 @@ function createSequenceElement(node, options = {}) {
             // to a text string and lose the author's prose.
             //
             // No markdown is parsed here and none may ever be: this package
-            // depends on `yaml` alone, and reaching for a markdown parser would
-            // put content-reader inside the runtime. The reader already built
-            // this node; the job here is only to WALK it.
+            // parses NOTHING and has no parser dependency at all, and reaching
+            // for a markdown parser would put content-reader inside the
+            // runtime. The reader already built this node; the job here is only
+            // to WALK it.
             //
             // `options` rides along so nested content is sequenced under the
             // same options as its parent. (`inset_block` and `blockquote` used
@@ -198,12 +150,23 @@ function createSequenceElement(node, options = {}) {
 
         case "codeBlock": {
             const codeText = getTextContent(content, options);
-            // Tagged code blocks are semantically data blocks, not code
+            // Tagged code blocks are semantically data blocks, not code — the
+            // tag is what routes them to `data[tag]`, so the routing holds even
+            // though the payload here is raw text.
+            //
+            // ⛔ NOTHING IS PARSED HERE, and nothing may be. A tagged block the
+            // reader could parse arrives as a `dataBlock` carrying `attrs.data`
+            // (the case above); content-reader emits THIS shape only when
+            // `parseCodeBlockData` already returned null — i.e. the text is not
+            // valid JSON or YAML. Re-running a parser on it in the browser
+            // cannot succeed, and it used to cost every site the whole `yaml`
+            // package: 98 KB minified, ~29 KB gzip, pinned into the bundle by a
+            // static import that no bundler could shake. Removed 2026-09-01.
             if (attrs?.tag) {
                 return {
                     type: "dataBlock",
                     tag: attrs.tag,
-                    data: getCodeBlockData(codeText, attrs),
+                    data: codeText,
                 };
             }
             return {

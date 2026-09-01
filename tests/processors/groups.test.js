@@ -12,6 +12,7 @@ import {
     taggedJsonBlocks,
     taggedYamlBlocks,
     untaggedCodeBlocks,
+    unparsedTaggedBlock,
     mixedCodeBlocks,
     bodyBeforeHeadings,
     consecutiveH1s,
@@ -169,6 +170,19 @@ describe("processGroups", () => {
             theme: "dark",
             features: ["seo", "analytics"],
         });
+    });
+
+    test("an unparsed tagged block still routes, carrying raw text", () => {
+        // The semantic parser parses nothing — it walks what content-reader
+        // built. A tagged block the reader could parse arrives as a `dataBlock`
+        // with `attrs.data` (the two tests above); this shape is what it emits
+        // when parsing FAILED, so re-parsing here could only fail again. It
+        // used to run a YAML parser at runtime, which pinned the whole `yaml`
+        // package into every site's bundle.
+        const sequence = processSequence(unparsedTaggedBlock);
+        const result = processGroups(sequence);
+
+        expect(result.data["site-config"]).toBe("title: My Site\n  bad: [indent");
     });
 
     test("untagged code blocks are not parsed as data", () => {
