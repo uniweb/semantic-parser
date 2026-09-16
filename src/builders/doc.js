@@ -6,6 +6,34 @@
  *
  * Starter content uses plain strings (no HTML marks), so the conversion
  * is straightforward — no need to reverse inline HTML formatting.
+ *
+ * ## ⭐ IT ACCEPTS THE PARSER'S OWN VOCABULARY TOO — and that is a contract
+ *
+ * This builder was written with its own spelling for several concepts, and
+ * `parseContent` emits a DIFFERENT one for the same thing: a link's text is
+ * `text` here and `label` there; an image's address is `src` here and `url`
+ * there; a video's cover is a string here and `{ src | url | identifier }`
+ * there; a list item is a plain string here and a whole content GROUP there.
+ *
+ * ⛔ EVERY ONE OF THOSE MISMATCHES FAILED SILENTLY, which is why the rule is
+ * now written down. Measured 2026-09-16, all four on the shapes a caller would
+ * most naturally reach for:
+ *
+ *   { links:  [{ label, href }] }        → buildDoc returns **null** outright
+ *   { images: [{ url, alt }] }           → an ImageBlock with NO url attr
+ *   { videos: [{ coverImg: '/p.jpg' }] } → the cover parses back as ""
+ *   { lists:  parsed.lists }             → a text node whose `text` is an
+ *                                          OBJECT — an invalid document
+ *
+ * None of them threw. A generator author reaches for `label` and `url` because
+ * those are the names in `docs/reference/component-metadata.md` and the names a
+ * component actually reads off `content` — so the natural spelling was the
+ * broken one, and it produced an empty section rather than an error.
+ *
+ * ⇒ For every concept where the two sides disagree, ACCEPT BOTH SPELLINGS. The
+ * emitted document is unchanged — this only widens what may come in — so the
+ * round-trip assertions above still pin the output. A new field whose name
+ * differs from the parser's needs the same treatment, or it joins this list.
  */
 
 // --- TipTap node builders ---
@@ -35,18 +63,23 @@ function paragraph(text) {
   }
 }
 
-function linkParagraph({ text, href, target }) {
-  if (!text || !href) return null
+function linkParagraph({ text, label, href, target }) {
+  // `label` is what parseContent emits and what a component reads off
+  // `content.links[]`; `text` is this builder's original spelling.
+  const caption = text || label
+  if (!caption || !href) return null
   const mark = { type: 'link', attrs: { href } }
   if (target) mark.attrs.target = target
   return {
     type: 'paragraph',
-    content: [{ type: 'text', text, marks: [mark] }],
+    content: [{ type: 'text', text: caption, marks: [mark] }],
   }
 }
 
-function imageBlock({ src, alt = '', caption = '', direction, role, width, height }) {
-  const attrs = { url: src, alt }
+function imageBlock({ src, url, alt = '', caption = '', direction, role, width, height }) {
+  // The node attr is `url` and so is the parsed field; `src` is this builder's
+  // original spelling. Either one in, `url` out.
+  const attrs = { url: src || url, alt }
   if (caption) attrs.caption = caption
   if (direction) attrs.direction = direction
   if (role) attrs.role = role
@@ -81,11 +114,16 @@ function iconNode({ src, url, svg, library, name, size, color }) {
   return { type: 'UniwebIcon', attrs }
 }
 
-function videoNode({ src, caption, direction, coverImg }) {
-  const attrs = { src }
+function videoNode({ src, url, caption, direction, coverImg }) {
+  const attrs = { src: src || url }
   if (caption) attrs.caption = caption
   if (direction) attrs.direction = direction
-  if (coverImg) attrs.coverImg = coverImg
+  // ⛔ The editor's `Video` node holds `coverImg` as an OBJECT — the reader is
+  // `makeAssetUrl`, which looks for `.src` / `.url` / `.identifier`. A bare
+  // string passed straight through parses back as "": `info?.src` on a string
+  // is undefined. Normalize here so a caller may write either.
+  const cover = typeof coverImg === 'string' ? { src: coverImg } : coverImg
+  if (cover && (cover.src || cover.url || cover.identifier)) attrs.coverImg = cover
   return { type: 'Video', attrs }
 }
 
@@ -95,13 +133,30 @@ function dividerBlock() {
 
 function bulletList(items) {
   if (!items || !items.length) return null
+  const entries = items.map(listItemText).filter(Boolean)
+  if (!entries.length) return null
   return {
     type: 'bulletList',
-    content: items.map(item => ({
+    content: entries.map(text => ({
       type: 'listItem',
-      content: [paragraph(item)].filter(Boolean),
+      content: [paragraph(text)].filter(Boolean),
     })),
   }
+}
+
+/**
+ * One list entry's text. A generator writes plain strings; `parseContent`
+ * emits a full content GROUP per entry ({ paragraphs, links, … }), and feeding
+ * that back produced a text node whose `text` was an object — an invalid
+ * document that threw nowhere.
+ */
+function listItemText(item) {
+  if (typeof item === 'string') return item
+  if (!item || typeof item !== 'object') return ''
+  if (Array.isArray(item.paragraphs) && item.paragraphs.length) {
+    return item.paragraphs.join(' ')
+  }
+  return item.title || ''
 }
 
 // --- Group builder ---

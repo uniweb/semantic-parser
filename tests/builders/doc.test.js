@@ -361,3 +361,50 @@ describe('icon identity crosses to the editor intact', () => {
     ])
   })
 })
+
+// ⭐ The builder has its own spelling for several concepts and `parseContent`
+// emits a different one for the same thing. Every mismatch failed SILENTLY —
+// a null document, an attr-less node, an empty string, an invalid text node —
+// and the parser's spelling is the one a generator reaches for first, because
+// it is what a component reads and what the reference docs show. Both must
+// work. (Measured 2026-09-16; the icon case above is the same rule, found
+// earlier.)
+describe('accepts the parser\'s vocabulary as well as its own', () => {
+  test('a link may say `label` (parsed) or `text` (builder)', () => {
+    for (const link of [{ label: 'Learn more', href: '/a' }, { text: 'Learn more', href: '/a' }]) {
+      const parsed = parseContent(buildDoc({ links: [link] }))
+      expect(parsed.links).toHaveLength(1)
+      expect(parsed.links[0].label).toBe('Learn more')
+      expect(parsed.links[0].href).toBe('/a')
+    }
+  })
+
+  test('a links-only structure builds a document rather than null', () => {
+    // `{ label }` returned null outright: no nodes, no error, no section.
+    expect(buildDoc({ links: [{ label: 'Go', href: '/go' }] })).not.toBeNull()
+  })
+
+  test('an image may say `url` (parsed) or `src` (builder)', () => {
+    for (const image of [{ url: '/a.png', alt: 'A' }, { src: '/a.png', alt: 'A' }]) {
+      const parsed = parseContent(buildDoc({ images: [image] }))
+      expect(parsed.images).toHaveLength(1)
+      expect(parsed.images[0].url).toBe('/a.png')
+    }
+  })
+
+  test("a video's cover may be a string or the node's object shape", () => {
+    // `makeAssetUrl` reads .src/.url/.identifier, so a bare string parsed as "".
+    for (const coverImg of ['/p.jpg', { src: '/p.jpg' }, { url: '/p.jpg' }]) {
+      const parsed = parseContent(buildDoc({ videos: [{ src: '/v.mp4', coverImg }] }))
+      expect(parsed.videos[0].coverImg).toBe('/p.jpg')
+    }
+  })
+
+  test('a list entry may be a plain string or a parsed content group', () => {
+    const fromStrings = parseContent(buildDoc({ lists: [['a', 'b']] })).lists
+    // Feeding the parsed form back produced a text node holding an OBJECT.
+    const rebuilt = parseContent(buildDoc({ lists: fromStrings })).lists
+    expect(rebuilt).toHaveLength(1)
+    expect(rebuilt[0].map(entry => entry.paragraphs)).toEqual([['a'], ['b']])
+  })
+})
