@@ -55,6 +55,33 @@ function heading(level, text) {
   }
 }
 
+/**
+ * A label line — `#> Text` — which is how a pretitle is written.
+ *
+ * ⛔ NOT A SMALLER HEADING BEFORE THE TITLE. That positional form still parses,
+ * and it is what this builder emitted until 2026-09-16, but it is the old
+ * spelling and it is fragile in a way the label line is not: it means "pretitle"
+ * only by sitting before a bigger heading, so the same line moved, or left
+ * alone, becomes something else. `#>` says what it is wherever it lands.
+ *
+ * ⭐ THE `#` COUNT MEANS NOTHING. `#>`, `##>` and `###>` are the same thing —
+ * content-reader keeps the authored count in `level` purely so a file
+ * round-trips byte-for-byte. We match the level of the title it labels, which is
+ * what an author writing by hand does (`##>` above an `##` item title).
+ *
+ * On the wire it is an ordinary heading carrying `role: 'pretitle'`, so every
+ * consumer that already understands headings keeps working.
+ */
+function labelLine(level, text) {
+  if (!text) return null
+  if (Array.isArray(text)) return text.map(t => labelLine(level, t)).filter(Boolean)
+  return {
+    type: 'heading',
+    attrs: { level, role: 'pretitle' },
+    content: [textNode(text)],
+  }
+}
+
 function paragraph(text) {
   if (!text) return null
   return {
@@ -212,11 +239,10 @@ function listItemText(item) {
 function buildGroupNodes(group, titleLevel = 1, options = {}) {
   const nodes = []
 
-  // 1. Headings: pretitle → title → subtitle
-  // Pretitle uses a higher level number (less important) than title
-  // e.g., H3 before H1 — mirrors isPreTitle() in groups.js
+  // 1. Headings: pretitle → title → subtitle.
+  // A pretitle is a LABEL LINE (`#> Text`), at the level of the title it labels.
   if (group.pretitle) {
-    const pre = heading(titleLevel + 2, group.pretitle)
+    const pre = labelLine(titleLevel, group.pretitle)
     if (Array.isArray(pre)) nodes.push(...pre)
     else if (pre) nodes.push(pre)
   }

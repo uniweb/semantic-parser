@@ -478,3 +478,36 @@ describe('code blocks', () => {
     expect(buildDoc({ data: 'nope' })).toBeNull()
   })
 })
+
+// ⭐ A PRETITLE IS A LABEL LINE (`#> Text`), not a smaller heading before the
+// title. The positional form still parses — this builder emitted it until
+// 2026-09-16 — but it is the old spelling, and it carries its meaning only by
+// position: the same line moved, or left on its own, stops being a pretitle.
+describe('pretitle is written as a label line', () => {
+  test('it emits a heading with role pretitle, never a bare smaller heading', () => {
+    const doc = buildDoc({ pretitle: 'Now in open beta', title: 'Ship your site' })
+    const [first] = doc.content
+    expect(first.attrs.role).toBe('pretitle')
+    // the old form: a level-3 heading with no role, sitting before the title
+    expect(doc.content.some(n => n.type === 'heading' && !n.attrs.role && n.attrs.level === 3)).toBe(false)
+  })
+
+  test('the label takes the level of the title it labels', () => {
+    // The count means nothing to the parser; it matches what an author types.
+    const doc = buildDoc({ title: 'T', pretitle: 'P', items: [{ pretitle: 'IP', title: 'I' }] })
+    const labels = doc.content.filter(n => n.attrs?.role === 'pretitle')
+    expect(labels.map(n => n.attrs.level)).toEqual([1, 2])
+  })
+
+  test('a pretitle with no title is still a pretitle', () => {
+    // The positional form cannot express this: with nothing bigger after it,
+    // a lone smaller heading is just a heading.
+    const parsed = parseContent(buildDoc({ pretitle: 'Just a label' }))
+    expect(parsed.pretitle).toBe('Just a label')
+    expect(parsed.title).toBe('')
+  })
+
+  test('it round-trips', () => {
+    expect(parseContent(buildDoc({ pretitle: 'P', title: 'T' }))).toMatchObject({ pretitle: 'P', title: 'T' })
+  })
+})
