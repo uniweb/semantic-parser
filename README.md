@@ -66,7 +66,8 @@ Main content fields are at the top level. The `items` array contains additional 
 result = {
   // Header fields (from headings) — each is a string, or an array when the
   // part spans several lines
-  pretitle: "",             // `#>` label line(s), or smaller headings above the title
+  pretitle: "",             // `#>` label line(s) — also smaller headings above
+                            //   the title, the older spelling
   title: "Welcome",         // Main heading
   subtitle: "",             // Line(s) one step below the title
 
@@ -180,7 +181,7 @@ This is the mechanism that creates repeating content groups (cards, features, FA
 Two spellings fill the `pretitle` slot:
 
 - **A `#>` label line** — a heading with `role: "pretitle"`. It names the block that starts next, at any depth, with no level arithmetic; the hash count is carried for round-tripping and means nothing.
-- **Position** — smaller headings stacked above the most important heading of a run (H3 before H1, H6 before H5, …), in any order. `#### / ### / # Title` and `## / ### / # Title` both yield a two-line pretitle.
+- **Position** — smaller headings stacked above the most important heading of a run (H3 before H1, H6 before H5, …), in any order. `#### / ### / # Title` and `## / ### / # Title` both yield a two-line pretitle. ⚖️ This is the older spelling and is read for compatibility; a label line is what to WRITE, because it carries its meaning alone rather than by what follows it.
 
 ### Banner image
 

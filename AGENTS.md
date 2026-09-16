@@ -53,7 +53,7 @@ The parser returns a flat content structure:
 ```js
 {
   title: '',       // Main heading
-  pretitle: '',    // `#>` label line(s) or smaller headings above the title
+  pretitle: '',    // `#>` label line(s); also smaller headings above the title
   subtitle: '',    // Line(s) one step below the title (string or array)
   paragraphs: [],
   links: [],       // All link-like entities (including buttons, documents)
@@ -161,7 +161,7 @@ Lists maintain hierarchy through nested structure. The `processListItems()` func
 
 Key patterns — the staircase rule (each heading relates to the one before it):
 
-- **Pretitle**: `#>` label lines (headings with `role: "pretitle"`), and smaller headings stacked directly above a more important one (H3→H1, H6→H5, …). String or array.
+- **Pretitle**: `#>` label lines (headings with `role: "pretitle"`) — what to write. Also smaller headings stacked directly above a more important one (H3→H1, H6→H5, …), the older spelling, read for compatibility. String or array.
 - **Subtitle**: one step below the title, directly adjacent — and each further one-step descent (or same-size repeat) is another subtitle line. String or array.
 - **Items**: a heading two or more steps below the previous one, a step back up, or any heading after body content starts a new group.
 - **Banner Pattern**: an image (with banner role or followed by a heading) at the start of the first group stays with the headline.
