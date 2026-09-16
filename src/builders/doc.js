@@ -165,7 +165,10 @@ function codeBlock(snippet) {
  * next editor sync. A builder has no author to echo, so it states one.
  */
 function dataBlock(tag, value, language) {
-  if (!tag || value === undefined) return null
+  // A null value is the same absence as no key at all — a component reading
+  // `content.data[tag]` gets null either way — so emit no fence rather than one
+  // whose whole payload is `null`.
+  if (!tag || value === undefined || value === null) return null
   return { type: 'dataBlock', attrs: { tag, language, data: value } }
 }
 
