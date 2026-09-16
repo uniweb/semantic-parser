@@ -131,6 +131,44 @@ function dividerBlock() {
   return { type: 'DividerBlock' }
 }
 
+/**
+ * A code block for DISPLAY — what lands in `content.snippets`.
+ *
+ * `parseContent` groups one as `{ language, code }`; the element before
+ * grouping carries `{ text, attrs }`. Accept either spelling, and a bare string
+ * for a snippet with no language.
+ */
+function codeBlock(snippet) {
+  const spec = typeof snippet === 'string' ? { code: snippet } : snippet
+  if (!spec || typeof spec !== 'object') return null
+  const text = spec.code ?? spec.text
+  if (typeof text !== 'string' || text === '') return null
+  const attrs = {}
+  if (spec.language) attrs.language = spec.language
+  if (spec.filename) attrs.filename = spec.filename
+  return { type: 'codeBlock', attrs, content: [textNode(text)] }
+}
+
+/**
+ * A tagged data block — what lands in `content.data[tag]`.
+ *
+ * ⛔ IT IS A `dataBlock`, NOT A TAGGED `codeBlock`, and the difference is not
+ * cosmetic. content-reader emits `dataBlock` when a tagged fence PARSED, with
+ * the parsed value on `attrs.data`; it falls back to a tagged `codeBlock`
+ * carrying raw TEXT only when parsing failed. A builder handed a real object
+ * has parsed data by definition, so emitting the failure shape would hand a
+ * component a string where it expects a record.
+ *
+ * ⭐ `language` IS LOAD-BEARING, not decoration. content-writer reads it back to
+ * choose the fence, and the parsed value alone cannot say whether the author
+ * wrote YAML or JSON — without it an author's YAML silently becomes JSON on the
+ * next editor sync. A builder has no author to echo, so it states one.
+ */
+function dataBlock(tag, value, language) {
+  if (!tag || value === undefined) return null
+  return { type: 'dataBlock', attrs: { tag, language, data: value } }
+}
+
 function bulletList(items) {
   if (!items || !items.length) return null
   const entries = items.map(listItemText).filter(Boolean)
@@ -168,7 +206,7 @@ function listItemText(item) {
  * @param {number} titleLevel - Heading level for title (1 for main, 2 for items)
  * @returns {Array} Array of TipTap nodes
  */
-function buildGroupNodes(group, titleLevel = 1) {
+function buildGroupNodes(group, titleLevel = 1, options = {}) {
   const nodes = []
 
   // 1. Headings: pretitle → title → subtitle
@@ -233,6 +271,29 @@ function buildGroupNodes(group, titleLevel = 1) {
     }
   }
 
+  if (group.snippets) {
+    for (const snippet of group.snippets) {
+      const node = codeBlock(snippet)
+      if (node) nodes.push(node)
+    }
+  }
+
+  // `data` is a MAP of tag → value, not a list: one tagged fence per key, in
+  // declaration order.
+  //
+  // ⚠️ A `concept_block` (```md:faq) also lands in `content.data`, as
+  // `{ items, sequence }` — a tagged PROSE fence, not data. This does not
+  // reconstruct one: it emits the data fence, whose payload round-trips to the
+  // same value. Prose that was parsed into a document does not come back as
+  // prose here, and a caller rebuilding a concept block wants the markdown.
+  if (group.data && typeof group.data === 'object' && !Array.isArray(group.data)) {
+    const language = options.dataLanguage || 'yaml'
+    for (const [tag, value] of Object.entries(group.data)) {
+      const node = dataBlock(tag, value, language)
+      if (node) nodes.push(node)
+    }
+  }
+
   return nodes
 }
 
@@ -246,22 +307,26 @@ function buildGroupNodes(group, titleLevel = 1) {
  * roundtrips through parseContent() to yield the same structure.
  *
  * @param {Object} content - Content structure (same shape as parseContent output / starter)
+ * @param {Object} [options]
+ * @param {string} [options.dataLanguage='yaml'] - the fence a tagged data block
+ *   is written as. It is recorded on the node because content-writer reads it
+ *   back to choose the fence, and a parsed value cannot say which one it was.
  * @returns {Object|null} TipTap document { type: 'doc', content: [...] }, or null if empty
  */
-function buildDoc(content) {
+function buildDoc(content, options = {}) {
   if (!content) return null
 
   const nodes = []
 
   // Main group content (title level 1)
-  nodes.push(...buildGroupNodes(content, 1))
+  nodes.push(...buildGroupNodes(content, 1, options))
 
   // Items: separated by DividerBlock (mirrors divider-based grouping in groups.js)
   if (content.items && content.items.length > 0) {
     for (const item of content.items) {
       nodes.push(dividerBlock())
       // Item headings use level 2 (one below main H1)
-      nodes.push(...buildGroupNodes(item, 2))
+      nodes.push(...buildGroupNodes(item, 2, options))
     }
   }
 

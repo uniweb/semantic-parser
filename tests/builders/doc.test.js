@@ -408,3 +408,73 @@ describe('accepts the parser\'s vocabulary as well as its own', () => {
     expect(rebuilt[0].map(entry => entry.paragraphs)).toEqual([['a'], ['b']])
   })
 })
+
+// ⭐ Code blocks are the builder's newest slots, and the two of them are
+// DIFFERENT NODES for a reason content-reader already encodes: a tagged fence
+// that PARSED is a `dataBlock` carrying the parsed value; one that failed to
+// parse degrades to a tagged `codeBlock` carrying raw text. A builder handed a
+// real object has parsed data by definition.
+describe('code blocks', () => {
+  test('a snippet round-trips with its language', () => {
+    const parsed = parseContent(buildDoc({ snippets: [{ language: 'js', code: 'const x = 1' }] }))
+    expect(parsed.snippets).toEqual([{ language: 'js', code: 'const x = 1' }])
+  })
+
+  test('a snippet may say `code` (parsed) or `text` (the pre-grouping element)', () => {
+    expect(parseContent(buildDoc({ snippets: [{ language: 'py', text: 'x = 1' }] })).snippets).toEqual([
+      { language: 'py', code: 'x = 1' },
+    ])
+  })
+
+  test('a bare string is a snippet with no language', () => {
+    expect(parseContent(buildDoc({ snippets: ['plain'] })).snippets).toEqual([
+      { language: '', code: 'plain' },
+    ])
+  })
+
+  test('an empty snippet builds no node rather than an empty fence', () => {
+    expect(buildDoc({ snippets: [{ language: 'js', code: '' }, '', null] })).toBeNull()
+  })
+
+  test('tagged data round-trips as a dataBlock, keyed by its tag', () => {
+    const data = { api: { method: 'GET', path: '/v1/things', parameters: [{ name: 'limit' }] } }
+    expect(parseContent(buildDoc({ data })).data).toEqual(data)
+  })
+
+  test('it is a dataBlock, not a tagged codeBlock', () => {
+    // The tagged-codeBlock shape is content-reader's PARSE FAILURE fallback and
+    // carries raw text — a component reading a record would get a string.
+    const doc = buildDoc({ data: { api: { method: 'GET' } } })
+    const node = doc.content[0]
+    expect(node.type).toBe('dataBlock')
+    expect(node.attrs.data).toEqual({ method: 'GET' })
+  })
+
+  test('the language is recorded, because the value cannot state it', () => {
+    // content-writer reads it back to pick the fence; without it an author's
+    // YAML silently becomes JSON on the next sync.
+    expect(buildDoc({ data: { nav: [] } }).content[0].attrs.language).toBe('yaml')
+    expect(buildDoc({ data: { scene: {} } }, { dataLanguage: 'json' }).content[0].attrs.language).toBe('json')
+  })
+
+  test('several tags become several blocks, in declaration order', () => {
+    const doc = buildDoc({ data: { first: { a: 1 }, second: { b: 2 } } })
+    expect(doc.content.map(n => n.attrs.tag)).toEqual(['first', 'second'])
+  })
+
+  test('an item carries its own snippets and data', () => {
+    const parsed = parseContent(
+      buildDoc({
+        title: 'Lessons',
+        items: [{ title: 'One', snippets: [{ language: 'js', code: 'go()' }], data: { quiz: { q: 'why' } } }],
+      }),
+    )
+    expect(parsed.items[0].snippets).toEqual([{ language: 'js', code: 'go()' }])
+    expect(parsed.items[0].data).toEqual({ quiz: { q: 'why' } })
+  })
+
+  test('a data map that is not a map is ignored rather than mis-built', () => {
+    expect(buildDoc({ data: [] })).toBeNull()
+    expect(buildDoc({ data: 'nope' })).toBeNull()
+  })
+})
