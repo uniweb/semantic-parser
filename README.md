@@ -73,9 +73,10 @@ result = {
 
   // Body fields
   paragraphs: ["Get started today."],
-  links: [],                // All links (including buttons, documents)
+  links: [],                // All links (including buttons)
   images: [],
   videos: [],
+  documents: [],            // Files marked {role=pdf} — { url, alt, caption, preview?, … }
   icons: [],
   lists: [],
   quotes: [],
@@ -83,6 +84,8 @@ result = {
   snippets: [],             // Fenced code blocks — { language, code }
   data: {},                 // Structured data (tagged data blocks, forms, cards)
   headings: [],             // Only from nested content (quote/list bodies)
+  // tables: [],            // Only when the content has one — { rows, attrs }
+  // math: [],              // Only when the content has one — { id, latex, mathml }
 
   // Additional content groups (from headings after content)
   // Each item has the SAME flat structure as the top level — title,
