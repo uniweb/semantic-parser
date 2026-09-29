@@ -1,3 +1,5 @@
+import { mimeFor, fileNameOf } from "../utils/mime.js";
+
 /**
  * HTML-attribute encoding for values placed inside double-quoted
  * attributes. Backslashes and braces (common in LaTeX) pass through
@@ -830,6 +832,7 @@ function parseMarkdownDocument(itemAttrs, options) {
         parseImgBlock(itemAttrs || {}, options);
     return {
         url,
+        ...fileFacts(url, itemAttrs),
         alt,
         caption,
         role,
@@ -839,6 +842,25 @@ function parseMarkdownDocument(itemAttrs, options) {
         ...(preview && { preview }),
         ...(author && { author }),
         ...(description && { description }),
+    };
+}
+
+/**
+ * A document's file, as a file record's value names it: `name` (the file's name) and
+ * `mime` from its address, and `size` — known only where the file is — when a
+ * producer stamped one. A stamped `name` or `mime` wins over the address: the build
+ * copies a local file under a hashed name, so it stamps the one the author gave it.
+ * ✅ The field names are a file record's [Diego, 2026-09-29], so one component can
+ * render a downloads list from either.
+ */
+function fileFacts(url, attrs = {}) {
+    const name = typeof attrs?.name === "string" && attrs.name ? attrs.name : fileNameOf(url);
+    const mime = typeof attrs?.mime === "string" && attrs.mime ? attrs.mime : name ? mimeFor(name) : "";
+    const size = Number.isFinite(attrs?.size) ? attrs.size : null;
+    return {
+        ...(name && { name }),
+        ...(mime && { mime }),
+        ...(size !== null && { size }),
     };
 }
 
@@ -855,8 +877,10 @@ function documentFromEditorNode(itemAttrs) {
         description,
         fileType,
     } = parseDocumentBlock(itemAttrs || {});
+    const url = href || downloadUrl || "";
     return {
-        url: href || downloadUrl || "",
+        url,
+        ...fileFacts(url, itemAttrs),
         alt: alt || title,
         caption: title,
         role: "pdf",

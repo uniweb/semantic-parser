@@ -76,7 +76,8 @@ result = {
   links: [],                // All links (including buttons)
   images: [],
   videos: [],
-  documents: [],            // Files marked {role=pdf} — { url, alt, caption, preview?, … }
+  documents: [],            // Files marked {role=pdf} — { url, name, mime, size?, alt,
+                            //   caption, preview?, … }
   icons: [],
   lists: [],
   quotes: [],

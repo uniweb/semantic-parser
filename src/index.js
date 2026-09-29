@@ -2,6 +2,7 @@ import { processSequence, resolveAssetUrl, ASSET_SLOTS } from "./processors/sequ
 import { processGroups } from "./processors/groups.js";
 import { buildDoc } from "./builders/doc.js";
 import { lintContent } from "./lint.js";
+import { MIME_TYPES, mimeFor } from "./utils/mime.js";
 
 /**
  * Parse ProseMirror/TipTap content into semantic structure
@@ -54,4 +55,6 @@ function parseContent(doc, options = {}) {
 // `lintContent` diagnoses grouping near-misses (see src/lint.js). It never
 // affects a parse — parsing stays deterministic; the judgment lives here so
 // the CLI, the dev server, and an editor surface the same findings.
-export { parseContent, buildDoc, resolveAssetUrl, ASSET_SLOTS, lintContent };
+// `MIME_TYPES` / `mimeFor` are the one extension → media-type table: a document's
+// `mime` here, a file's in the build (src/utils/mime.js).
+export { parseContent, buildDoc, resolveAssetUrl, ASSET_SLOTS, lintContent, MIME_TYPES, mimeFor };
