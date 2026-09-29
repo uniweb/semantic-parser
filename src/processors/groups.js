@@ -17,6 +17,7 @@ function flattenGroup(group) {
         videos: group.body.videos || [],
         documents: group.body.documents || [],
         insets: group.body.insets || [],
+        media: group.body.media || [],
         snippets: group.body.snippets || [],
         data: group.body.data || {},
         quotes: group.body.quotes || [],
@@ -69,6 +70,7 @@ function processGroups(sequence, options = {}) {
             lists: [],
             videos: [],
             insets: [],
+            media: [],
             snippets: [],
             data: {},
             quotes: [],
@@ -113,6 +115,7 @@ function processGroups(sequence, options = {}) {
         lists: [],
         videos: [],
         insets: [],
+        media: [],
         data: {},
         quotes: [],
         headings: [],
@@ -306,6 +309,13 @@ function processGroupContent(elements, options = {}) {
         videos: [],
         documents: [],
         insets: [],
+        // ⭐ The group's visual media — each block-level image, video and inset, in the
+        // order written, tagged with its `kind`: what a media slot holds. `images`,
+        // `videos` and `insets` keep what they hold, and keep the author's order only
+        // within one kind; across kinds only this does (and `sequence`). An image
+        // inside a sentence belongs to the text, so it is not here — nor is a
+        // document, which is not visual media.
+        media: [],
         snippets: [],
         paragraphs: [],
         links: [],
@@ -382,11 +392,13 @@ function processGroupContent(elements, options = {}) {
                         body.icons.push(element.attrs);
                     } else {
                         body.images.push(preserveProps);
+                        body.media.push({ ...preserveProps, kind: "image" });
                     }
                     break;
 
                 case "video":
                     body.videos.push(preserveProps);
+                    body.media.push({ ...preserveProps, kind: "video" });
                     break;
 
                 case "document":
@@ -499,6 +511,7 @@ function processGroupContent(elements, options = {}) {
 
                 case "inset":
                     body.insets.push({ refId: element.refId });
+                    body.media.push({ refId: element.refId, kind: "inset" });
                     break;
 
                 case "form":

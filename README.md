@@ -81,6 +81,8 @@ result = {
   lists: [],
   quotes: [],
   insets: [],               // Inline @Component references — { refId }
+  media: [],                // Images, videos and insets on their own line, in the
+                            //   order written — each with its `kind`
   snippets: [],             // Fenced code blocks — { language, code }
   data: {},                 // Structured data (tagged data blocks, forms, cards)
   headings: [],             // Only from nested content (quote/list bodies)
