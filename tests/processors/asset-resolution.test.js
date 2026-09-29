@@ -328,7 +328,7 @@ describe('a poster is an asset like any other', () => {
         ]
       },
       { assets: { url: TEMPLATE } }
-    ).sequence.find((e) => e.type === 'image')
+    ).sequence.find((e) => e.type === 'document')
     expect(el.attrs.preview).toBe(`https://cdn.example/x/${ID}/base.png`)
   })
 })

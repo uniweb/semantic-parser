@@ -116,6 +116,18 @@ function imageBlock({ src, url, alt = '', caption = '', direction, role, width, 
   return { type: 'ImageBlock', attrs }
 }
 
+// A document is STORED as the image row with `role: 'pdf'` — the node the
+// markdown reader writes and the parser reads as a `document` — so that is what
+// this emits. `url` (the parser's spelling) or `src` (this builder's) in.
+function documentNode({ url, src, alt = '', caption = '', preview, author, description }) {
+  const attrs = { src: url || src, alt, role: 'pdf' }
+  if (caption) attrs.caption = caption
+  if (preview) attrs.preview = preview
+  if (author) attrs.author = author
+  if (description) attrs.description = description
+  return { type: 'image', attrs }
+}
+
 function iconNode({ src, url, svg, library, name, size, color }) {
   // UniwebIcon supports multiple source types.
   //
@@ -290,6 +302,12 @@ function buildGroupNodes(group, titleLevel = 1, options = {}) {
   if (group.videos) {
     for (const video of group.videos) {
       nodes.push(videoNode(video))
+    }
+  }
+
+  if (group.documents) {
+    for (const doc of group.documents) {
+      nodes.push(documentNode(doc))
     }
   }
 

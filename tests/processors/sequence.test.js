@@ -820,16 +820,26 @@ describe("media roles decide the delivery array", () => {
     });
   });
 
-  test("role=pdf carries preview/author/description", () => {
-    expect(
-      seq({
-        src: "/r.pdf",
-        role: "pdf",
-        preview: "/c.jpg",
-        author: "Ada",
-        description: "Annual",
-      }).attrs
-    ).toMatchObject({ preview: "/c.jpg", author: "Ada", description: "Annual" });
+  test("role=pdf becomes a document element carrying preview/author/description", () => {
+    const el = seq({
+      src: "/r.pdf",
+      role: "pdf",
+      preview: "/c.jpg",
+      author: "Ada",
+      description: "Annual",
+    });
+    expect(el.type).toBe("document");
+    expect(el.attrs).toMatchObject({
+      url: "/r.pdf",
+      role: "pdf",
+      preview: "/c.jpg",
+      author: "Ada",
+      description: "Annual",
+    });
+    // A document is a file, not a picture: the image layout keys are not its own.
+    for (const k of ["size", "direction", "imgPos", "credit", "contentType"]) {
+      expect(el.attrs).not.toHaveProperty(k);
+    }
   });
 
   test("an image with no extra attrs gains no empty keys", () => {

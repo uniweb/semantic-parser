@@ -210,7 +210,19 @@ function createSequenceElement(node, options = {}) {
         case "image":
             // `role` decides which content array this lands in — the contract
             // published in docs/reference/content-structure.md ("Media Assets"):
-            // icon → icons, video → videos, everything else → images.
+            // icon → icons, video → videos, pdf → documents, everything else →
+            // images.
+            //
+            // A document is stored as this node, as a video is, and delivered as
+            // a kind of its own (`parseMarkdownDocument`). Until 2026-09-29 it
+            // landed in `images`, drawn as an image of the file, while the
+            // runtime had guaranteed an empty `content.documents` since January.
+            if (attrs?.role === "pdf") {
+                return {
+                    type: "document",
+                    attrs: parseMarkdownDocument(attrs, options),
+                };
+            }
             //
             // The video branch was missing until 2026-07-30: every
             // `{role=video}` node ran parseImgBlock, which does not carry
@@ -315,13 +327,16 @@ function createSequenceElement(node, options = {}) {
             };
 
         case "document-group":
-            return {
-                type: "document-group",
-                documents:
-                    node.content
-                        ?.filter((c) => c.type === "document")
-                        .map((doc) => parseDocumentBlock(doc.attrs)) || [],
-            };
+            // The editor's older container: one `document` element per document
+            // it holds, so a document is one kind of content whichever node
+            // wrote it (`documentFromEditorNode`). Until 2026-09-29 this was a
+            // `document-group` element whose documents became `content.links`.
+            return (node.content || [])
+                .filter((c) => c.type === "document")
+                .map((doc) => ({
+                    type: "document",
+                    attrs: documentFromEditorNode(doc.attrs),
+                }));
 
         // The editor renamed this node to `StructuredContent` (2026-07-31,
         // editor-internal). Both are accepted: the new name is what the editor
@@ -613,13 +628,15 @@ function processInlineElements(content, options = {}) {
             // image silently deleted. groups.js has carried the receiving
             // branch (and a comment describing exactly this failure) since it
             // was written, but nothing ever emitted the item it reads.
-            const isVideo = item.attrs?.role === "video";
-            items.push({
-                type: isVideo ? "video" : "image",
-                attrs: isVideo
-                    ? parseMarkdownVideo(item.attrs, options)
-                    : parseImgBlock(item.attrs || {}, options),
-            });
+            // The role partitions it as the block case does.
+            const role = item.attrs?.role;
+            if (role === "video") {
+                items.push({ type: "video", attrs: parseMarkdownVideo(item.attrs, options) });
+            } else if (role === "pdf") {
+                items.push({ type: "document", attrs: parseMarkdownDocument(item.attrs, options) });
+            } else {
+                items.push({ type: "image", attrs: parseImgBlock(item.attrs || {}, options) });
+            }
         } else if (item.type === "math-inline" || item.type === "math_inline") {
             items.push(item);
         } else if (item.type === "inset_placeholder") {
@@ -799,6 +816,54 @@ function parseCardBlock(itemAttrs) {
         ...others,
         address: parsedAddress,
         coverImg: makeAssetUrl(coverImg),
+    };
+}
+
+// A document authored in markdown: `![Annual report](./report.pdf){role=pdf …}`.
+//
+// Read through `parseImgBlock`, which resolves the address and the preview's the
+// way every image's are, and then narrowed to what a document IS: where the file
+// is, what it is called, and the resource's own metadata. The image layout keys
+// (direction, size, credit) describe a picture, not a file, and are left out.
+function parseMarkdownDocument(itemAttrs, options) {
+    const { url, alt, caption, role, href, target, id, preview, author, description } =
+        parseImgBlock(itemAttrs || {}, options);
+    return {
+        url,
+        alt,
+        caption,
+        role,
+        ...(href && { href }),
+        ...(target && { target }),
+        ...(id && { id }),
+        ...(preview && { preview }),
+        ...(author && { author }),
+        ...(description && { description }),
+    };
+}
+
+// The editor's older `document` node — its `title`, `coverImg` and `src` (or
+// asset identifier) — read into the same shape a markdown document has.
+function documentFromEditorNode(itemAttrs) {
+    const {
+        href,
+        downloadUrl,
+        title = "",
+        alt = "",
+        coverImg,
+        author,
+        description,
+        fileType,
+    } = parseDocumentBlock(itemAttrs || {});
+    return {
+        url: href || downloadUrl || "",
+        alt: alt || title,
+        caption: title,
+        role: "pdf",
+        ...(coverImg && { preview: coverImg }),
+        ...(author && { author }),
+        ...(description && { description }),
+        ...(fileType && { fileType }),
     };
 }
 

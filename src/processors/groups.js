@@ -15,6 +15,7 @@ function flattenGroup(group) {
         icons: group.body.icons || [],
         lists: group.body.lists || [],
         videos: group.body.videos || [],
+        documents: group.body.documents || [],
         insets: group.body.insets || [],
         snippets: group.body.snippets || [],
         data: group.body.data || {},
@@ -303,6 +304,7 @@ function processGroupContent(elements, options = {}) {
         images: [],
         icons: [],
         videos: [],
+        documents: [],
         insets: [],
         snippets: [],
         paragraphs: [],
@@ -385,6 +387,10 @@ function processGroupContent(elements, options = {}) {
 
                 case "video":
                     body.videos.push(preserveProps);
+                    break;
+
+                case "document":
+                    body.documents.push(preserveProps);
                     break;
 
                 case "link":
@@ -520,19 +526,6 @@ function processGroupContent(elements, options = {}) {
                     });
                     break;
 
-                case "document-group":
-                    // Map documents to links with role=document
-                    element.documents.forEach(doc => {
-                        body.links.push({
-                            href: doc.href || doc.downloadUrl || '',
-                            label: doc.title || '',
-                            role: 'document',
-                            download: true,
-                            preview: doc.coverImg,
-                            fileType: doc.fileType,
-                        });
-                    });
-                    break;
             }
         }
     }
@@ -588,6 +581,9 @@ function processInlineElements(children, body) {
             // `{role=video}` belongs in videos[] for the same reason a hoisted
             // one does.
             body.videos.push(item.attrs);
+        } else if (item.type === "document") {
+            // And an inline `{role=pdf}` in documents[].
+            body.documents.push(item.attrs);
         } else if (item.type === "link") {
             // Handle inline links extracted from paragraph text nodes
             body.links.push(item.attrs);
