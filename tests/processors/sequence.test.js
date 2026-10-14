@@ -710,7 +710,9 @@ describe("icon nodes carry an attrs OBJECT", () => {
   test("an Icon node yields an object, never a string", () => {
     const entry = iconEntry({ svg: "<svg id='x'/>", theme: "dark" });
     expect(typeof entry.attrs).toBe("object");
-    expect(entry.attrs).toEqual({ svg: "<svg id='x'/>", theme: "dark" });
+    // The markup is rebuilt from the SVG allowlist (src/sanitize.js), so its
+    // attribute comes back double-quoted.
+    expect(entry.attrs).toEqual({ svg: '<svg id="x"/>', theme: "dark" });
   });
 
   test("spreading the attrs gives named props, not characters", () => {

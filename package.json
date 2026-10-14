@@ -5,7 +5,8 @@
     "type": "module",
     "main": "./src/index.js",
     "exports": {
-        ".": "./src/index.js"
+        ".": "./src/index.js",
+        "./sanitize": "./src/sanitize.js"
     },
     "scripts": {
         "test": "vitest run",

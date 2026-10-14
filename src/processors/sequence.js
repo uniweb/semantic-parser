@@ -1,21 +1,19 @@
 import { mimeFor, fileNameOf } from "../utils/mime.js";
+import {
+    escapeText,
+    escapeAttribute as escapeAttr,
+    sanitizeMathML,
+    sanitizeSVG,
+    isSafeLink,
+} from "../sanitize.js";
 
-/**
- * HTML-attribute encoding for values placed inside double-quoted
- * attributes. Backslashes and braces (common in LaTeX) pass through
- * unchanged; only the four characters that are unsafe in this context
- * need replacing.
- *
- * @param {string} s
- * @returns {string}
- */
-function escapeAttr(s) {
-    return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
+// ⭐ A text node holds TEXT. Every string this file builds for kit's HTML
+// renderers escapes it, and every attribute value, so content cannot carry a
+// tag, a handler or a script URL into a page. The only markup that passes is
+// rebuilt from an allowlist: a math node's MathML and an icon's SVG
+// (`../sanitize.js`). ⛔ Until 2026-10-14 text was pasted in as stored, on the
+// rule that a text node held HTML — so `<img src=x onerror=…>` written in
+// content ran on the published page, and `if a<b then` showed as `if a`.
 
 /**
  * Check if an inline node is an icon.
@@ -59,9 +57,11 @@ function createSequenceElement(node, options = {}) {
     const attrs = node.attrs;
     const content = node.content;
 
+    // A link whose URL may not be followed is not a link: the paragraph falls
+    // through to ordinary text, where `anchor` leaves its label unlinked.
     const linkVal = isLink(node, options);
 
-    if (linkVal) {
+    if (linkVal && isSafeLink(linkVal.href)) {
         return {
             type: "link",
             attrs: linkVal, //label, href
@@ -70,7 +70,7 @@ function createSequenceElement(node, options = {}) {
 
     // Check for paragraph containing only multiple links (no other text)
     const multipleLinks = isOnlyLinks(node);
-    if (multipleLinks) {
+    if (multipleLinks && multipleLinks.every((l) => isSafeLink(l.attrs?.href))) {
         return multipleLinks; // Returns array of link elements
     }
 
@@ -201,7 +201,7 @@ function createSequenceElement(node, options = {}) {
                 display: true,
                 id: node.attrs?.id || null,
                 latex: node.attrs?.latex || "",
-                mathml: node.attrs?.mathml || "",
+                mathml: sanitizeMathML(node.attrs?.mathml || ""),
                 attrs,
             };
         case "ImageBlock":
@@ -424,12 +424,23 @@ function sameLink(a, b) {
  * Wrap already-styled inline content in an anchor.
  */
 function wrapLink(inner, linkMark) {
-    const href = linkMark.attrs.href;
-    const target = linkMark.attrs.target || "_self";
+    return anchor(linkMark.attrs.href, linkMark.attrs.target, inner);
+}
+
+const LINK_TARGETS = new Set(["_self", "_blank", "_parent", "_top"]);
+
+/**
+ * An anchor around already-escaped inner HTML. A link whose URL may not be
+ * followed (`javascript:`, `data:`, any scheme `isSafeLink` refuses) is not
+ * drawn as a link: its label stays, as text.
+ */
+function anchor(href, target, inner) {
+    if (typeof href !== "string" || !isSafeLink(href)) return inner;
+    const t = LINK_TARGETS.has(target) ? target : "_self";
     const extension = href.split(".").pop()?.toLowerCase();
     const isFileLink = FILE_LINK_EXTENSIONS.includes(extension);
 
-    return `<a href="${href}" target="${target}"${isFileLink ? " download" : ""}>${inner}</a>`;
+    return `<a href="${escapeAttr(href)}" target="${t}"${isFileLink ? " download" : ""}>${inner}</a>`;
 }
 
 function getTextContent(content, options = {}) {
@@ -476,6 +487,31 @@ function getTextContent(content, options = {}) {
 }
 
 /**
+ * A named inline style becomes an attribute of its span — `[text]{accent}` is
+ * `<span accent="true">`. The name is the author's, so it is held to a plain
+ * lowercase word: no event handler, no URL or style attribute, nothing a
+ * pasted value can turn into one (a colour such as `rgb(255, 0, 0)` used to
+ * arrive here as a name).
+ */
+const NOT_A_SPAN_NAME = new Set([
+    "href", "src", "srcset", "srcdoc", "action", "formaction", "style",
+    "background", "poster", "xmlns", "is", "slot",
+]);
+
+function isSpanName(key) {
+    return /^[a-z][a-z0-9-]*$/.test(key) && !key.startsWith("on") && !NOT_A_SPAN_NAME.has(key);
+}
+
+/** A CSS colour or `var(--token)` — what `color` and `bg` may set. */
+function isCssColor(value) {
+    return (
+        typeof value === "string" &&
+        /^[#a-zA-Z0-9(),.%\s+-]+$/.test(value) &&
+        !/url\s*\(|expression\s*\(/i.test(value)
+    );
+}
+
+/**
  * Render one inline node to HTML, applying every mark EXCEPT link — the
  * anchor is applied per group by getTextContent, since it may span nodes.
  */
@@ -485,7 +521,7 @@ function renderInlineNode(curr, iconOrdinals) {
             const { type, marks = [], text } = curr;
 
             if (type === "text") {
-                let styledText = text || "";
+                let styledText = escapeText(text || "");
 
                 // Apply marks in order: textStyle, highlight, bold, italic, link
                 // This ensures proper nesting
@@ -495,7 +531,8 @@ function renderInlineNode(curr, iconOrdinals) {
                     const color = marks.find(
                         (mark) => mark.type === "textStyle"
                     )?.attrs?.color;
-                    if (color) {
+                    // A theme token's name, or nothing — it lands inside `var(--…)`.
+                    if (typeof color === "string" && /^[a-zA-Z0-9-]+$/.test(color)) {
                         styledText = `<span style="color: var(--${color})">${styledText}</span>`;
                     }
                 }
@@ -512,18 +549,18 @@ function renderInlineNode(curr, iconOrdinals) {
                     const attrParts = [];
                     const styleParts = [];
 
-                    if (attrs.class) attrParts.push(`class="${attrs.class}"`);
-                    if (attrs.id) attrParts.push(`id="${attrs.id}"`);
+                    if (attrs.class) attrParts.push(`class="${escapeAttr(attrs.class)}"`);
+                    if (attrs.id) attrParts.push(`id="${escapeAttr(attrs.id)}"`);
 
                     for (const [key, value] of Object.entries(attrs)) {
                         if (key === 'class' || key === 'id') continue;
                         // Convert color/bg to inline styles
-                        if (key === 'color') {
-                            styleParts.push(`color: ${value}`);
-                        } else if (key === 'bg') {
-                            styleParts.push(`background: ${value}`);
-                        } else {
-                            attrParts.push(`${key}="${value}"`);
+                        if (key === 'color' || key === 'bg') {
+                            if (isCssColor(value)) {
+                                styleParts.push(`${key === 'color' ? 'color' : 'background'}: ${value}`);
+                            }
+                        } else if (isSpanName(key)) {
+                            attrParts.push(`${key}="${escapeAttr(value)}"`);
                         }
                     }
 
@@ -568,7 +605,7 @@ function renderInlineNode(curr, iconOrdinals) {
                 // The wrapper is visually invisible; the inner <math>
                 // still renders as MathML in the browser.
                 const latex = escapeAttr(curr.attrs?.latex || "");
-                const mathml = curr.attrs?.mathml || "";
+                const mathml = sanitizeMathML(curr.attrs?.mathml || "");
                 return (
                     prev +
                     `<span data-type="math" data-latex="${latex}" data-display="false">${mathml}</span>`
@@ -583,7 +620,7 @@ function renderInlineNode(curr, iconOrdinals) {
                 // have an alternative path.
                 const refId = curr.attrs?.refId;
                 if (!refId) return prev;
-                return prev + `<uniweb-inset data-ref-id="${refId}"></uniweb-inset>`;
+                return prev + `<uniweb-inset data-ref-id="${escapeAttr(refId)}"></uniweb-inset>`;
             } else if (type === "hardBreak") {
                 return prev + "<br>";
             } else if (isIconNode(curr)) {
@@ -654,7 +691,7 @@ function processInlineElements(content, options = {}) {
         } else if (item.type === "text" && item.marks) {
             // Extract links from text nodes with link marks
             const linkMark = item.marks.find((m) => m.type === "link");
-            if (linkMark) {
+            if (linkMark && isSafeLink(linkMark.attrs?.href)) {
                 items.push({
                     type: "link",
                     attrs: {
@@ -920,7 +957,8 @@ function parseUniwebIcon(itemAttrs) {
     // Markdown pipeline: library + name (resolved at runtime via CDN)
     //                    OR a file, which arrives as `src`
     const icon = {};
-    if (svg) icon.svg = svg;
+    // Markup from content, so rebuilt from the SVG allowlist (`../sanitize.js`).
+    if (svg) icon.svg = sanitizeSVG(svg);
     // Standard ProseMirror `image` nodes use `src`; the editor's `UniwebIcon`
     // uses `url`. Honor either, exactly as parseImgBlock does below — a
     // file-sourced icon is authored `![Logo](icon:./logo.svg)` or
@@ -968,7 +1006,7 @@ function parseIconBlock(itemAttrs) {
     const { svg, theme } = itemAttrs || {};
 
     const icon = {};
-    if (svg) icon.svg = svg;
+    if (svg) icon.svg = sanitizeSVG(svg);
     if (theme) icon.theme = theme;
 
     return icon;
@@ -1366,7 +1404,7 @@ function isStyledLink(item, options = {}) {
     return {
         type: "paragraph",
         children: processInlineElements(item.content, options),
-        text: `<a target="${target}" href="${href}">${textContent}</a>`,
+        text: anchor(href, target, textContent),
         attrs: item.attrs,
     };
 }
