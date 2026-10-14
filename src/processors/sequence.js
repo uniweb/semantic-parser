@@ -5,6 +5,9 @@ import {
     sanitizeMathML,
     sanitizeSVG,
     isSafeLink,
+    isLinkTarget,
+    isStyleName,
+    isCssColor,
 } from "../sanitize.js";
 
 // ⭐ A text node holds TEXT. Every string this file builds for kit's HTML
@@ -402,10 +405,28 @@ const FILE_LINK_EXTENSIONS = [
 ];
 
 /**
+ * A text's link, if it carries one: its `link` mark, or its `button` mark read
+ * as a link whose `role` is `button` — a button is a link, with a hint for how
+ * a component may draw it (`[Go](/x){button}`, documented in
+ * docs/reference/content-structure.md). ⛔ Until 2026-10-14 nothing here read
+ * the `button` mark: its label reached the page as plain text and the link was
+ * lost, wherever it sat.
+ */
+function linkMarkOf(marks) {
+    for (const mark of marks || []) {
+        if (mark?.type === "link") return mark;
+        if (mark?.type === "button") {
+            return { type: "link", attrs: { ...mark.attrs, role: mark.attrs?.role ?? "button" } };
+        }
+    }
+    return null;
+}
+
+/**
  * Find a node's link mark, if it carries one.
  */
 function getLinkMark(node) {
-    return (node?.marks || []).find((mark) => mark.type === "link") || null;
+    return linkMarkOf(node?.marks);
 }
 
 /**
@@ -427,8 +448,6 @@ function wrapLink(inner, linkMark) {
     return anchor(linkMark.attrs.href, linkMark.attrs.target, inner);
 }
 
-const LINK_TARGETS = new Set(["_self", "_blank", "_parent", "_top"]);
-
 /**
  * An anchor around already-escaped inner HTML. A link whose URL may not be
  * followed (`javascript:`, `data:`, any scheme `isSafeLink` refuses) is not
@@ -436,7 +455,7 @@ const LINK_TARGETS = new Set(["_self", "_blank", "_parent", "_top"]);
  */
 function anchor(href, target, inner) {
     if (typeof href !== "string" || !isSafeLink(href)) return inner;
-    const t = LINK_TARGETS.has(target) ? target : "_self";
+    const t = isLinkTarget(target) ? target : "_self";
     const extension = href.split(".").pop()?.toLowerCase();
     const isFileLink = FILE_LINK_EXTENSIONS.includes(extension);
 
@@ -487,31 +506,6 @@ function getTextContent(content, options = {}) {
 }
 
 /**
- * A named inline style becomes an attribute of its span — `[text]{accent}` is
- * `<span accent="true">`. The name is the author's, so it is held to a plain
- * lowercase word: no event handler, no URL or style attribute, nothing a
- * pasted value can turn into one (a colour such as `rgb(255, 0, 0)` used to
- * arrive here as a name).
- */
-const NOT_A_SPAN_NAME = new Set([
-    "href", "src", "srcset", "srcdoc", "action", "formaction", "style",
-    "background", "poster", "xmlns", "is", "slot",
-]);
-
-function isSpanName(key) {
-    return /^[a-z][a-z0-9-]*$/.test(key) && !key.startsWith("on") && !NOT_A_SPAN_NAME.has(key);
-}
-
-/** A CSS colour or `var(--token)` — what `color` and `bg` may set. */
-function isCssColor(value) {
-    return (
-        typeof value === "string" &&
-        /^[#a-zA-Z0-9(),.%\s+-]+$/.test(value) &&
-        !/url\s*\(|expression\s*\(/i.test(value)
-    );
-}
-
-/**
  * Render one inline node to HTML, applying every mark EXCEPT link — the
  * anchor is applied per group by getTextContent, since it may span nodes.
  */
@@ -559,7 +553,12 @@ function renderInlineNode(curr, iconOrdinals) {
                             if (isCssColor(value)) {
                                 styleParts.push(`${key === 'color' ? 'color' : 'background'}: ${value}`);
                             }
-                        } else if (isSpanName(key)) {
+                        } else if (isStyleName(key)) {
+                            // A named inline style becomes an attribute of its
+                            // span — `[text]{accent}` is `<span accent="true">`
+                            // — so the name is held to a style name: never a
+                            // handler, a URL or a style attribute, nothing a
+                            // pasted value can turn into one.
                             attrParts.push(`${key}="${escapeAttr(value)}"`);
                         }
                     }
@@ -690,7 +689,7 @@ function processInlineElements(content, options = {}) {
             });
         } else if (item.type === "text" && item.marks) {
             // Extract links from text nodes with link marks
-            const linkMark = item.marks.find((m) => m.type === "link");
+            const linkMark = linkMarkOf(item.marks);
             if (linkMark && isSafeLink(linkMark.attrs?.href)) {
                 items.push({
                     type: "link",
@@ -1254,43 +1253,39 @@ function isLink(item, options = {}) {
 
         if (textContent.length === 1) {
             let contentItem = textContent[0];
-            let marks = contentItem?.marks || [];
+            const mark = linkMarkOf(contentItem?.marks);
 
-            for (let l = 0; l < marks.length; l++) {
-                let mark = marks[l];
+            if (mark) {
+                // Find the position of the link text in the original content
+                const linkIndex = originalContent.findIndex(
+                    (c) => c.type === "text" && c.text === contentItem.text
+                );
 
-                if (mark?.type === "link") {
-                    // Find the position of the link text in the original content
-                    const linkIndex = originalContent.findIndex(
-                        (c) => c.type === "text" && c.text === contentItem.text
-                    );
+                // Collect icons before and after the link text
+                let iconBefore = null;
+                let iconAfter = null;
 
-                    // Collect icons before and after the link text
-                    let iconBefore = null;
-                    let iconAfter = null;
-
-                    for (let i = 0; i < originalContent.length; i++) {
-                        if (isIconNode(originalContent[i])) {
-                            const iconAttrs = parseUniwebIcon(originalContent[i].attrs);
-                            if (i < linkIndex) {
-                                // Take the last icon before the link
-                                iconBefore = iconAttrs;
-                            } else if (i > linkIndex) {
-                                // Take the first icon after the link
-                                if (!iconAfter) iconAfter = iconAttrs;
-                            }
+                for (let i = 0; i < originalContent.length; i++) {
+                    if (isIconNode(originalContent[i])) {
+                        const iconAttrs = parseUniwebIcon(originalContent[i].attrs);
+                        if (i < linkIndex) {
+                            // Take the last icon before the link
+                            iconBefore = iconAttrs;
+                        } else if (i > linkIndex) {
+                            // Take the first icon after the link
+                            if (!iconAfter) iconAfter = iconAttrs;
                         }
                     }
-
-                    return {
-                        ...mark?.attrs,  // Preserve all link attributes (role, target, etc.)
-                        label: contentItem?.text || "",
-                        iconBefore,
-                        iconAfter,
-                        // Preserve all inline elements for advanced rendering
-                        children: processInlineElements(originalContent, options),
-                    };
                 }
+
+                return {
+                    ...mark?.attrs,  // Preserve all link attributes (role, target, etc.)
+                    label: contentItem?.text || "",
+                    iconBefore,
+                    iconAfter,
+                    // Preserve all inline elements for advanced rendering
+                    children: processInlineElements(originalContent, options),
+                };
             }
         }
     }
@@ -1330,8 +1325,7 @@ function isOnlyLinks(item) {
     // Check if ALL remaining content items are text nodes with link marks
     const allLinks = textContent.every((c) => {
         if (c.type !== "text") return false;
-        const hasLinkMark = c.marks?.some((m) => m.type === "link");
-        return hasLinkMark;
+        return Boolean(linkMarkOf(c.marks));
     });
 
     if (!allLinks) return false;
@@ -1339,7 +1333,7 @@ function isOnlyLinks(item) {
     // Extract links with all their attributes
     // Icons in this paragraph go to body.icons separately (no association)
     return textContent.map((c) => {
-        const linkMark = c.marks.find((m) => m.type === "link");
+        const linkMark = linkMarkOf(c.marks);
         return {
             type: "link",
             attrs: {
@@ -1369,18 +1363,11 @@ function isStyledLink(item, options = {}) {
     });
 
     // check if all content items have the same link mark
-    let firstLinkMark = content[0]?.marks?.find(
-        (mark) => mark.type === "link" && mark.attrs
-    );
-    if (!firstLinkMark) return false;
+    let firstLinkMark = linkMarkOf(content[0]?.marks);
+    if (!firstLinkMark?.attrs) return false;
     if (
         !content.every(
-            (c) =>
-                c?.marks?.some(
-                    (mark) =>
-                        mark.type === "link" &&
-                        mark.attrs?.href === firstLinkMark.attrs?.href
-                ) || false
+            (c) => linkMarkOf(c?.marks)?.attrs?.href === firstLinkMark.attrs?.href
         )
     )
         return false;
@@ -1390,7 +1377,7 @@ function isStyledLink(item, options = {}) {
     const cleanedContent = content.map((c) => {
         // remove link marks from content items
         const cleanedMarks =
-            c.marks?.filter((mark) => mark.type !== "link") || [];
+            c.marks?.filter((mark) => mark.type !== "link" && mark.type !== "button") || [];
         return {
             ...c,
             marks: cleanedMarks,

@@ -77,9 +77,9 @@ function readAttributes(source) {
 }
 
 /**
- * Split markup into text runs, start tags and end tags. Comments, CDATA,
- * doctypes and processing instructions are skipped; a `<` that opens none of
- * these is text.
+ * Split markup into text runs, start tags and end tags. Comments, doctypes and
+ * processing instructions come out as `skipped` tokens, which a rebuild leaves
+ * out; CDATA is text; a `<` that opens none of these is text.
  */
 function* readTokens(input) {
     let i = 0;
@@ -94,6 +94,7 @@ function* readTokens(input) {
         if (input.startsWith("<!--", lt)) {
             const end = input.indexOf("-->", lt + 4);
             i = end === -1 ? input.length : end + 3;
+            yield { type: "skipped", value: input.slice(lt, i) };
             continue;
         }
         // CDATA is character data: its content is text, escaped like any other.
@@ -106,6 +107,7 @@ function* readTokens(input) {
         if (input[lt + 1] === "!" || input[lt + 1] === "?") {
             const end = input.indexOf(">", lt);
             i = end === -1 ? input.length : end + 1;
+            yield { type: "skipped", value: input.slice(lt, i) };
             continue;
         }
 
@@ -141,19 +143,30 @@ function onlyLocalUrls(value) {
 /**
  * A `style` attribute, declaration by declaration: a property name and a value
  * with no URL other than a local reference, and nothing that can open another
- * construct.
+ * construct. Blank declarations (`a:b;;`, a trailing `;`) are neither.
  */
-function cleanStyle(value) {
+function readStyle(value) {
     const kept = [];
+    const dropped = [];
     for (const declaration of value.split(";")) {
+        if (!declaration.trim()) continue;
         const colon = declaration.indexOf(":");
-        if (colon === -1) continue;
-        const property = declaration.slice(0, colon).trim().toLowerCase();
-        const v = declaration.slice(colon + 1).trim();
-        if (!/^-?[a-z][a-z-]*$/.test(property) || !v) continue;
-        if (/[\\<>{}]|\/\*/.test(v) || UNSAFE_VALUE.test(v) || !onlyLocalUrls(v)) continue;
+        const property = colon === -1 ? "" : declaration.slice(0, colon).trim().toLowerCase();
+        const v = colon === -1 ? "" : declaration.slice(colon + 1).trim();
+        if (
+            !/^-?[a-z][a-z-]*$/.test(property) || !v ||
+            /[\\<>{}]|\/\*/.test(v) || UNSAFE_VALUE.test(v) || !onlyLocalUrls(v)
+        ) {
+            dropped.push(declaration.trim());
+            continue;
+        }
         kept.push(`${property}:${v}`);
     }
+    return { kept, dropped };
+}
+
+function cleanStyle(value) {
+    const { kept } = readStyle(value);
     return kept.length ? kept.join(";") + ";" : null;
 }
 
@@ -296,6 +309,7 @@ function rebuild(input, policy) {
             if (token.type === "end" && name === dropping && --depth === 0) dropping = null;
             continue;
         }
+        if (token.type === "skipped") continue;
         if (token.type === "text") {
             out += escapeText(token.cdata ? token.value : decodeReferences(token.value));
             continue;
@@ -332,6 +346,58 @@ function rebuild(input, policy) {
 }
 
 /**
+ * What a rebuild would leave out of `input`, item by item — the same walk as
+ * `rebuild`, reporting instead of writing. Empty when the markup is within the
+ * policy, which is when a rebuild changes nothing but spelling (quotes,
+ * escapes, a style's spacing).
+ */
+function inspect(input, policy) {
+    const outside = [];
+    let dropping = null;
+    let depth = 0;
+
+    for (const token of readTokens(input)) {
+        if (dropping) {
+            const name = token.name?.toLowerCase();
+            if (token.type === "start" && name === dropping && !token.selfClosing) depth++;
+            if (token.type === "end" && name === dropping && --depth === 0) dropping = null;
+            continue;
+        }
+        if (token.type === "text") continue;
+        if (token.type === "skipped") {
+            outside.push({ reason: "markup", value: token.value.slice(0, 40) });
+            continue;
+        }
+        if (token.type === "end") continue; // a start tag already answered for it
+
+        const lower = token.name.toLowerCase();
+        const element = DROP_WITH_CONTENT.has(lower) ? null : policy.element(token.name);
+        if (!element) {
+            outside.push({ reason: "element", element: token.name });
+            if (DROP_WITH_CONTENT.has(lower) && !token.selfClosing) {
+                dropping = lower;
+                depth = 1;
+            }
+            continue;
+        }
+        for (const [name, raw] of token.attributes) {
+            const value = decodeReferences(raw);
+            if (name.toLowerCase() === "style") {
+                const { dropped } = readStyle(value);
+                if (dropped.length) {
+                    outside.push({ reason: "style", element, attribute: name, value: dropped.join("; ") });
+                }
+                continue;
+            }
+            if (!policy.attribute(element, name, value)) {
+                outside.push({ reason: "attribute", element, attribute: name });
+            }
+        }
+    }
+    return outside;
+}
+
+/**
  * Rebuild MathML from its allowlist — MathML Core, the presentation elements a
  * LaTeX compiler emits, and temml's error span. No element can link, load or
  * run anything.
@@ -341,6 +407,23 @@ function rebuild(input, policy) {
  */
 export function sanitizeMathML(mathml) {
     return rebuild(mathml, MATHML);
+}
+
+/**
+ * What in a MathML string falls outside the allowlist `sanitizeMathML` rebuilds
+ * from: each element and attribute a rebuild drops, each style declaration it
+ * drops, and any comment, doctype or processing instruction. Empty when the
+ * markup is within it.
+ *
+ * This is how content is checked rather than cleaned — a writer refused with
+ * what it sent can fix it, where a cleaned value changes without a word.
+ *
+ * @param {string} mathml
+ * @returns {Array<{reason: 'element'|'attribute'|'style'|'markup', element?: string, attribute?: string, value?: string}>}
+ */
+export function inspectMathML(mathml) {
+    if (typeof mathml !== "string" || !mathml) return [];
+    return inspect(mathml, MATHML);
 }
 
 /**
@@ -369,4 +452,105 @@ export function sanitizeSVG(svg) {
  */
 export function isSafeLink(url) {
     return typeof url === "string" && isSafeUrl(url);
+}
+
+// ─── Values content may hold ─────────────────────────────────────────────────
+//
+// The rules below decide what a text's marks may put into the markup the parser
+// builds. The parser applies them at render, and a writer of content can check
+// against the same functions (`@uniweb/content-reader/vocabulary`), so the two
+// never disagree about what a value may be.
+
+const LINK_TARGETS = ["_self", "_blank", "_parent", "_top"];
+const LINK_TARGET_SET = new Set(LINK_TARGETS);
+
+/**
+ * Whether a link may open in this target: the four keywords a browser defines.
+ * A frame name is not one — content does not know the page's frames.
+ *
+ * @param {string} target
+ * @returns {boolean}
+ */
+export function isLinkTarget(target) {
+    return LINK_TARGET_SET.has(target);
+}
+
+const STYLE_NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
+/** Attribute names a browser reads as a URL, a style or an element's identity. */
+const NOT_A_STYLE_NAME = [
+    "href", "src", "srcset", "srcdoc", "action", "formaction", "style",
+    "background", "poster", "xmlns", "is", "slot",
+];
+const NOT_A_STYLE_NAME_SET = new Set(NOT_A_STYLE_NAME);
+
+/**
+ * Whether a name may be a style name — the attribute NAME a bracketed span
+ * carries (`[text]{accent}` is `<span accent="true">`), which a theme binds by
+ * name (`span[accent]`, from theme.yml's `inline:`). A letter, then letters,
+ * digits, `_` and `-`. Never a name a browser would read as an event handler —
+ * anything starting with `on`, in any case, since HTML lowercases attribute
+ * names — nor one it reads as a URL, a style or an element's identity.
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function isStyleName(name) {
+    if (typeof name !== "string" || !STYLE_NAME.test(name)) return false;
+    const lower = name.toLowerCase();
+    return !lower.startsWith("on") && !NOT_A_STYLE_NAME_SET.has(lower);
+}
+
+const CSS_COLOR = /^[#a-zA-Z0-9(),.%\s+-]+$/;
+const NOT_A_COLOR = /url\s*\(|expression\s*\(/i;
+
+/**
+ * Whether a value is a CSS colour — a name, a hex, a colour function, or
+ * `var(--token)` — what a span's `color` and `bg` may set. No `;`, quote or
+ * URL, so it cannot end the declaration it sits in or load anything.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isCssColor(value) {
+    return typeof value === "string" && CSS_COLOR.test(value) && !NOT_A_COLOR.test(value);
+}
+
+/**
+ * The same rules, as data — for a reader that implements them in another
+ * language, such as a backend checking content when it is written. Every list
+ * here is the one the functions above use.
+ *
+ * @returns {Object}
+ */
+export function allowlists() {
+    return {
+        link: {
+            schemes: [...LINK_SCHEMES],
+            relative: "a URL with no scheme",
+            readingTheScheme: "ASCII control characters, space and DEL are ignored, as a browser ignores them",
+            targets: [...LINK_TARGETS],
+        },
+        styleName: {
+            pattern: STYLE_NAME.source,
+            notStartingWith: "on, in any case",
+            not: [...NOT_A_STYLE_NAME],
+        },
+        color: {
+            pattern: CSS_COLOR.source,
+            notMatching: NOT_A_COLOR.source,
+            flags: "i",
+        },
+        mathml: {
+            elements: [...MATHML_ELEMENTS.values()],
+            attributes: [...MATHML_ATTRIBUTES.values()],
+            commonAttributes: "class, id, role, dir, aria-<letters>, data-<letters, digits and ->",
+            droppedWithContent: [...DROP_WITH_CONTENT],
+            neverAttributes: "on…, in any case; href, xlink:href and src",
+            unsafeValue: UNSAFE_VALUE.source,
+            urlInAValue: "only url(#id), a reference within the document",
+            style: "declaration by declaration: a property of letters and -, a value with none of \\ < > { } /* and no unsafe value",
+            markup: "no comment, doctype or processing instruction; CDATA is text",
+        },
+    };
 }

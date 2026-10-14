@@ -1,5 +1,16 @@
 import { readFileSync } from "node:fs";
-import { sanitizeMathML, sanitizeSVG, isSafeLink, escapeText, escapeAttribute } from "../src/sanitize.js";
+import {
+    sanitizeMathML,
+    sanitizeSVG,
+    inspectMathML,
+    isSafeLink,
+    isLinkTarget,
+    isStyleName,
+    isCssColor,
+    allowlists,
+    escapeText,
+    escapeAttribute,
+} from "../src/sanitize.js";
 
 /**
  * The allowlist rebuild for the two kinds of markup content may carry.
@@ -147,6 +158,75 @@ describe("isSafeLink", () => {
         "%j may not",
         (url) => expect(isSafeLink(url)).toBe(false),
     );
+});
+
+describe("inspectMathML — what a rebuild would leave out, reported", () => {
+    const math = (inner) => `<math xmlns="http://www.w3.org/1998/Math/MathML">${inner}</math>`;
+
+    test.each(fixture.map((m, i) => [i, m]))("temml's fixture %i is within the allowlist", (_, mathml) => {
+        expect(inspectMathML(mathml)).toEqual([]);
+    });
+
+    test("each thing a rebuild drops is named", () => {
+        expect(inspectMathML(math('<mi onclick="alert(1)">x</mi>'))).toEqual([
+            { reason: "attribute", element: "mi", attribute: "onclick" },
+        ]);
+        expect(inspectMathML(math('<mtext><img src=x onerror="alert(1)"></mtext>'))).toEqual([
+            { reason: "element", element: "img" },
+        ]);
+        expect(inspectMathML(math('<mrow href="javascript:alert(1)"><mi>x</mi></mrow>'))).toEqual([
+            { reason: "attribute", element: "mrow", attribute: "href" },
+        ]);
+        expect(inspectMathML(math('<mi style="color:red;background:url(http://x.test/a)">x</mi>'))).toEqual([
+            { reason: "style", element: "mi", attribute: "style", value: "background:url(http://x.test/a)" },
+        ]);
+        expect(inspectMathML(math("<!-- x --><mi>a</mi>"))).toEqual([{ reason: "markup", value: "<!-- x -->" }]);
+    });
+
+    test("an element dropped with its content is named once", () => {
+        expect(
+            inspectMathML(math('<annotation-xml encoding="text/html"><script>alert(1)</script></annotation-xml>')),
+        ).toEqual([{ reason: "element", element: "annotation-xml" }]);
+    });
+
+    test("text is within it, whatever it spells", () => {
+        expect(inspectMathML(math("<mo>&lt;</mo><mo><</mo><![CDATA[<b>]]>"))).toEqual([]);
+        expect(inspectMathML("")).toEqual([]);
+    });
+});
+
+describe("values content may hold", () => {
+    test("a link target is one of the four keywords", () => {
+        for (const t of ["_self", "_blank", "_parent", "_top"]) expect(isLinkTarget(t)).toBe(true);
+        for (const t of ["frame1", "_BLANK", "", null, 'x" onclick="y']) expect(isLinkTarget(t)).toBe(false);
+    });
+
+    test.each(["accent", "callout", "bigRed", "my_style", "data-x", "aria-label", "x1"])("%s is a style name", (name) => {
+        expect(isStyleName(name)).toBe(true);
+    });
+
+    test.each(["onclick", "ONCLICK", "onMouseOver", "online", "href", "Style", "src", "xmlns", ".cls", "1x", "", "a b", "x:y", "rgb(255, 0, 0)"])(
+        "%j is not",
+        (name) => expect(isStyleName(name)).toBe(false),
+    );
+
+    test("a colour is a colour", () => {
+        for (const c of ["red", "#fff", "rgb(255, 0, 0)", "var(--accent)", "hsl(0 50% 50%)"]) expect(isCssColor(c)).toBe(true);
+        for (const c of ["red; background:url(x)", "url(x)", "expression(alert(1))", 'red"', 7]) expect(isCssColor(c)).toBe(false);
+    });
+
+    test("the rules as data are the lists the functions use", () => {
+        const rules = allowlists();
+        expect(JSON.parse(JSON.stringify(rules))).toEqual(rules);
+        for (const scheme of rules.link.schemes) expect(isSafeLink(`${scheme}:x`)).toBe(true);
+        for (const target of rules.link.targets) expect(isLinkTarget(target)).toBe(true);
+        for (const name of rules.styleName.not) expect(isStyleName(name)).toBe(false);
+        expect(new RegExp(rules.styleName.pattern).test("accent")).toBe(true);
+        for (const element of rules.mathml.elements) {
+            expect(sanitizeMathML(`<${element}></${element}>`)).toBe(`<${element}></${element}>`);
+        }
+        for (const element of rules.mathml.droppedWithContent) expect(sanitizeMathML(`<${element}>x</${element}>`)).toBe("");
+    });
 });
 
 describe("escaping", () => {

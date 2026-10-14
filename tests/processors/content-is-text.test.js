@@ -72,6 +72,30 @@ describe("links", () => {
         expect(safe).toMatchObject({ type: "link", attrs: { href: "/about", label: "go" } });
     });
 
+    test("a button is a link whose role is button", () => {
+        // `[Get Started](/signup){button}` — the mark both producers save.
+        // ⛔ Until 2026-10-14 nothing read the mark: the label reached the page
+        // as plain text and the link was lost.
+        const button = (href, extra = {}) => ({ type: "button", attrs: { href, title: null, variant: "primary", ...extra } });
+
+        const [alone] = processSequence(doc([text("Get Started", [button("/signup")])]));
+        expect(alone).toMatchObject({
+            type: "link",
+            attrs: { href: "/signup", label: "Get Started", role: "button", variant: "primary" },
+        });
+
+        expect(render([text("Click "), text("Go", [button("/x")]), text(" now.")])).toBe(
+            'Click <a href="/x" target="_self">Go</a> now.',
+        );
+
+        const [cta] = processSequence(doc([text("Go", [button("/x", { role: "cta" })])]));
+        expect(cta.attrs.role).toBe("cta");
+
+        const [unsafe] = processSequence(doc([text("Go", [button("javascript:alert(1)")])]));
+        expect(unsafe.type).toBe("paragraph");
+        expect(JSON.stringify(unsafe)).not.toContain("javascript:");
+    });
+
     test("a paragraph of only links, and the links a paragraph lists, drop the unsafe one", () => {
         const [p] = processSequence(doc([text("a", [link("/a")]), text(" "), text("b", [link("javascript:x")])]));
         expect(JSON.stringify(p)).not.toContain("javascript:");
@@ -90,6 +114,16 @@ describe("named styles and spans", () => {
         expect(render([text("x", [span({ onmouseover: "alert(1)" })])])).toBe("<span>x</span>");
         expect(render([text("x", [span({ href: "javascript:alert(1)", style: "x" })])])).toBe("<span>x</span>");
         expect(render([text("x", [span({ "rgb(255, 0, 0)": true })])])).toBe("<span>x</span>");
+        // HTML lowercases an attribute name, so a handler in any case is one.
+        expect(render([text("x", [span({ onMouseOver: "alert(1)", ONCLICK: "y" })])])).toBe("<span>x</span>");
+    });
+
+    test("a theme's own style name is kept, whatever its case", () => {
+        // theme.yml's `inline:` names any key; `span[bigRed]` matches the
+        // attribute a browser lowercases, so the name reaches the page as written.
+        expect(render([text("x", [span({ bigRed: true, my_style: true })])])).toBe(
+            '<span bigRed="true" my_style="true">x</span>',
+        );
     });
 
     test("class and id are escaped", () => {
