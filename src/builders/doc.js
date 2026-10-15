@@ -103,12 +103,16 @@ function linkParagraph({ text, label, href, target }) {
   }
 }
 
-function imageBlock({ src, url, alt = '', caption = '', direction, role, width, height }) {
+function imageBlock({ src, url, alt = '', caption = '', placement, role, width, height }) {
   // The node attr is `url` and so is the parsed field; `src` is this builder's
   // original spelling. Either one in, `url` out.
   const attrs = { url: src || url, alt }
   if (caption) attrs.caption = caption
-  if (direction) attrs.direction = direction
+  // The parsed field's own word, so parseContent(buildDoc(x)) keeps it. The
+  // editor's node calls it `direction` and drops an attr it does not declare,
+  // so the editor reads none until it saves the vocabulary; no starter content
+  // sets one. ⛔ Until 2026-10-15 this took and wrote `direction`.
+  if (placement) attrs.placement = placement
   if (role) attrs.role = role
   if (width && height) {
     attrs.aspect_ratio = { width, height, ratio: (height / width) * 100 }
@@ -153,10 +157,10 @@ function iconNode({ src, url, svg, library, name, size, color }) {
   return { type: 'UniwebIcon', attrs }
 }
 
-function videoNode({ src, url, caption, direction, coverImg }) {
+function videoNode({ src, url, caption, placement, coverImg }) {
   const attrs = { src: src || url }
   if (caption) attrs.caption = caption
-  if (direction) attrs.direction = direction
+  if (placement) attrs.placement = placement // as an image's, above
   // ⛔ The editor's `Video` node holds `coverImg` as an OBJECT — the reader is
   // `makeAssetUrl`, which looks for `.src` / `.url` / `.identifier`. A bare
   // string passed straight through parses back as "": `info?.src` on a string

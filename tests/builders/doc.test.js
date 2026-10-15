@@ -392,6 +392,14 @@ describe('accepts the parser\'s vocabulary as well as its own', () => {
     }
   })
 
+  test("an image's and a video's placement round-trip", () => {
+    const parsed = parseContent(
+      buildDoc({ images: [{ url: '/a.png', alt: 'A', placement: 'wide' }], videos: [{ src: '/v.mp4', placement: 'full' }] })
+    )
+    expect(parsed.images[0].placement).toBe('wide')
+    expect(parsed.videos[0].placement).toBe('full')
+  })
+
   test("a video's cover may be a string or the node's object shape", () => {
     // `makeAssetUrl` reads .src/.url/.identifier, so a bare string parsed as "".
     for (const coverImg of ['/p.jpg', { src: '/p.jpg' }, { url: '/p.jpg' }]) {

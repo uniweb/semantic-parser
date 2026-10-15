@@ -861,8 +861,8 @@ function parseCardBlock(itemAttrs) {
 //
 // Read through `parseImgBlock`, which resolves the address and the preview's the
 // way every image's are, and then narrowed to what a document IS: where the file
-// is, what it is called, and the resource's own metadata. The image layout keys
-// (direction, size, credit) describe a picture, not a file, and are left out.
+// is, what it is called, and the resource's own metadata. Where a picture sits
+// in a flow (`placement`) is not a file's, and is left out.
 function parseMarkdownDocument(itemAttrs, options) {
     const { url, alt, caption, role, href, target, id, preview, author, description } =
         parseImgBlock(itemAttrs || {}, options);
@@ -1016,47 +1016,47 @@ function parseImgBlock(itemAttrs, options) {
         info: imgInfo,
         targetId,
         caption = "",
-        direction,
-        filter,
         alt = "",
         src,
         url,
         href = "",
         target = "",
-        theme,
         role,
-        credit = "",
+        credit, // the editor's word for `author` — delivered as `author`
         id, // {#fig-id} cross-reference label — preserved so Press
             // adapters can emit \label{id} (LaTeX) / <id> (Typst).
         // ── Markdown-authored attributes ────────────────────────────────
         // This function was written for the EDITOR's `ImageBlock` node and
         // later reused for the markdown `image` node (see `case "image"`), so
-        // its vocabulary is the editor's: contentType, direction, filter,
-        // theme, credit. Everything markdown declares and the editor does not
-        // was therefore tokenized, declared, and then dropped one layer before
-        // delivery — the published "Image Attributes" table
-        // (docs/reference/content-structure.md) reached no component, and
-        // neither did the `role=pdf` set added 2026-07-29 for the editor's
-        // `document` fold-in. Carried 2026-07-30.
+        // its vocabulary was the editor's. Everything markdown declares and
+        // the editor does not was therefore tokenized, declared, and then
+        // dropped one layer before delivery — the published "Image
+        // Attributes" table (docs/reference/content-structure.md) reached no
+        // component, and neither did the `role=pdf` set added 2026-07-29 for
+        // the editor's `document` fold-in. Carried 2026-07-30.
+        //
+        // ⭐ An element now holds the vocabulary's words, whichever node it
+        // came from. ⛔ Until 2026-10-15 it also held the editor's `direction`
+        // and two things derived from it — `imgPos` (left/right) and a
+        // layout `size` (basic/lg/full, `basic` for every image without one) —
+        // plus `filter` and `theme`, none of which a stored document holds. A
+        // component handing the element to kit's <Image> passed that `size` as
+        // Image's avatar preset, so a "wide" image drew as a 96px square.
         width,
         height,
         loading,
         fit,
         position,
+        placement,   // where it sits in a flow: left, right, wide, full
         preview,     // role=pdf — the preview image
-        author,      // role=pdf — resource metadata, rendered beside the preview
+        author,      // the image's attribution; for role=pdf, the resource's
         description, // role=pdf — describes the RESOURCE, not the image (≠ alt)
     } = itemAttrs;
 
     let { contentType, viewType, contentId, identifier } = imgInfo || {};
 
-    const sizes = {
-        center: "basic",
-        wide: "lg",
-        fill: "full",
-    };
-
     caption = stripTags(caption);
+    const attribution = author || credit;
 
     // Reference precedence. Standard ProseMirror `image` nodes use `src`; the
     // custom `ImageBlock` node uses `url`. Honor either so callers don't have to
@@ -1088,19 +1088,9 @@ function parseImgBlock(itemAttrs, options) {
         value: identifier || "",
         alt: alt || caption,
         caption,
-        direction,
-        filter,
-        imgPos: direction === "left" || direction === "right" ? direction : "",
-        // NOTE: `size` here is the direction-derived LAYOUT size
-        // (basic/lg/full), not the author's `{size=…}` — that attribute is
-        // icon-only and is read by parseUniwebIcon. Do not wire `{size=…}`
-        // through here; the two meanings collide on one key.
-        size: sizes[direction] || "basic",
         href,
         target,
-        theme,
         role,
-        credit,
         id: id || undefined,
         // Omitted when absent, so an existing consumer sees no new empty keys.
         ...(width !== undefined && width !== null && { width }),
@@ -1108,12 +1098,13 @@ function parseImgBlock(itemAttrs, options) {
         ...(loading && { loading }),
         ...(fit && { fit }),
         ...(position && { position }),
+        ...(placement && { placement }),
         ...((() => {
             // Same rule for a document's preview image.
             const p = secondaryAssetUrl(itemAttrs, options, "preview");
             return p ? { preview: p } : {};
         })()),
-        ...(author && { author }),
+        ...(attribution && { author: attribution }),
         ...(description && { description }),
     };
 }
@@ -1142,6 +1133,7 @@ function parseMarkdownVideo(itemAttrs, options) {
         target = "",
         role,
         id, // {#fig-id} cross-reference label, same as parseImgBlock
+        placement, // where it sits in a flow, same as parseImgBlock
     } = itemAttrs || {};
 
     // Reference precedence, now genuinely identical to parseImgBlock: a
@@ -1175,6 +1167,7 @@ function parseMarkdownVideo(itemAttrs, options) {
     if (loop !== undefined) video.loop = loop;
     if (controls !== undefined) video.controls = controls;
     if (id) video.id = id;
+    if (placement) video.placement = placement;
 
     return video;
 }
@@ -1183,12 +1176,12 @@ function parseVideoBlock(itemAttrs, options) {
     let {
         src,
         caption = "",
-        direction,
         info = {},
         coverImg = {},
         alt,
         href = "",
         target = "",
+        placement, // where it sits in a flow; the editor's `direction` is not read
     } = itemAttrs;
 
     // Same precedence as parseImgBlock / parseMarkdownVideo: a resolvable
@@ -1198,11 +1191,11 @@ function parseVideoBlock(itemAttrs, options) {
     return {
         src: video,
         caption,
-        direction,
         coverImg: makeAssetUrl(coverImg),
         alt,
         href,
         target,
+        ...(placement && { placement }),
     };
 }
 
