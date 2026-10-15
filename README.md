@@ -74,8 +74,8 @@ result = {
   // Body fields
   paragraphs: ["Get started today."],
   links: [],                // All links (including buttons)
-  images: [],
-  videos: [],
+  images: [],               // { url, alt, caption, role, placement?, author?, … }
+  videos: [],               // { src, poster?, caption, placement?, … }
   documents: [],            // Files marked {role=pdf} — { url, name, mime, size?, alt,
                             //   caption, preview?, … }
   icons: [],
@@ -87,7 +87,8 @@ result = {
   snippets: [],             // Fenced code blocks — { language, code }
   data: {},                 // Structured data (tagged data blocks, forms, cards)
   headings: [],             // Only from nested content (quote/list bodies)
-  // tables: [],            // Only when the content has one — { rows, attrs }
+  // tables: [],            // Only when the content has one — { rows, attrs } — attrs:
+                            //   caption, id, placement, from its caption line
   // math: [],              // Only when the content has one — { id, latex, mathml }
 
   // Additional content groups (from headings after content)
@@ -116,7 +117,7 @@ const content = parseContent(doc);
 
 const title = content.title;
 const description = content.paragraphs.join(" ");
-const image = content.images[0]?.src;
+const image = content.images[0]?.url;
 ```
 
 ### Processing Content Sections
