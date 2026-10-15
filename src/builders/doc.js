@@ -1,11 +1,22 @@
 /**
- * Reverse conversion: content structure → TipTap document.
+ * Reverse conversion: content structure → a ProseMirror document in the
+ * rich-text vocabulary (`@uniweb/content-reader`'s schema).
  *
  * Mirrors the forward parser (processors/sequence.js + processors/groups.js)
  * so that parseContent(buildDoc(content)) roundtrips cleanly.
  *
  * Starter content uses plain strings (no HTML marks), so the conversion
  * is straightforward — no need to reverse inline HTML formatting.
+ *
+ * ## ⭐ IT WRITES THE VOCABULARY, IN THE SHAPES MARKDOWN READS TO
+ *
+ * Every node is one content-reader writes for the same markdown: a picture, a
+ * video and a document are an `image` with its `role`, an icon an `image` with
+ * `role: 'icon'` inside a paragraph, a divider a `divider`. What this returns is
+ * stored as it is and opened like any stored document, so it holds what every
+ * reader of a stored document reads — never one editor's own node names.
+ * ⛔ Until 2026-10-15 it wrote an editor's TipTap nodes (`ImageBlock`,
+ * `UniwebIcon`, `Video`, `DividerBlock`), which the vocabulary does not hold.
  *
  * ## ⭐ IT ACCEPTS THE PARSER'S OWN VOCABULARY TOO — and that is a contract
  *
@@ -20,7 +31,7 @@
  * most naturally reach for:
  *
  *   { links:  [{ label, href }] }        → buildDoc returns **null** outright
- *   { images: [{ url, alt }] }           → an ImageBlock with NO url attr
+ *   { images: [{ url, alt }] }           → an image node with NO address
  *   { videos: [{ coverImg: '/p.jpg' }] } → the cover parses back as ""
  *   { lists:  parsed.lists }             → a text node whose `text` is an
  *                                          OBJECT — an invalid document
@@ -36,7 +47,7 @@
  * differs from the parser's needs the same treatment, or it joins this list.
  */
 
-// --- TipTap node builders ---
+// --- Node builders ---
 
 function textNode(text) {
   return { type: 'text', text }
@@ -103,21 +114,23 @@ function linkParagraph({ text, label, href, target }) {
   }
 }
 
-function imageBlock({ src, url, alt = '', caption = '', placement, role, width, height }) {
-  // The node attr is `url` and so is the parsed field; `src` is this builder's
-  // original spelling. Either one in, `url` out.
-  const attrs = { url: src || url, alt }
+/** The attributes an image may hold beside its address, copied when they hold a value. */
+const IMAGE_EXTRAS = ['href', 'target', 'author', 'id', 'fit', 'position', 'loading']
+
+function imageNode(image) {
+  const { src, url, alt = '', caption = '', placement, role, width, height } = image
+  // The node's attr is `src`, this builder's original spelling; the parsed
+  // field is `url`. Either one in, `src` out.
+  const attrs = { src: src || url, alt, role: role || 'image' }
   if (caption) attrs.caption = caption
-  // The parsed field's own word, so parseContent(buildDoc(x)) keeps it. The
-  // editor's node calls it `direction` and drops an attr it does not declare,
-  // so the editor reads none until it saves the vocabulary; no starter content
-  // sets one. ⛔ Until 2026-10-15 this took and wrote `direction`.
+  // The picture's own size. Its proportions are these two, so nothing else
+  // carries them — ⛔ until 2026-10-15 this wrote an `aspect_ratio` computed
+  // from them, which the vocabulary does not hold.
+  if (width) attrs.width = width
+  if (height) attrs.height = height
   if (placement) attrs.placement = placement
-  if (role) attrs.role = role
-  if (width && height) {
-    attrs.aspect_ratio = { width, height, ratio: (height / width) * 100 }
-  }
-  return { type: 'ImageBlock', attrs }
+  for (const key of IMAGE_EXTRAS) if (image[key]) attrs[key] = image[key]
+  return { type: 'image', attrs }
 }
 
 // A document is STORED as the image row with `role: 'pdf'` — the node the
@@ -132,46 +145,58 @@ function documentNode({ url, src, alt = '', caption = '', preview, author, descr
   return { type: 'image', attrs }
 }
 
-function iconNode({ src, url, svg, library, name, size, color }) {
-  // UniwebIcon supports multiple source types.
-  //
-  // The family rides INSIDE `name` as `family:id`. The editor's node declares
-  // `{ name, svg, url, size, color, preserveColors, info }` and no `library`,
-  // and ProseMirror silently drops undeclared attrs on `fromJSON` — so emitting
-  // a separate `library` lost the family without a trace, on the path that
-  // builds starter content for every new section.
-  //
-  // `svg` is MARKUP and `url` is a URL — on both sides. A file-sourced icon
-  // arrives here as `src` and belongs in `url`, not in the markup slot; putting
-  // a path where a consumer expects `<svg …>` renders nothing. (Fixed
-  // 2026-07-30; `url` is declared on the editor's node, so it crosses intact.)
-  const attrs = {}
-  if (svg) attrs.svg = svg
-  // Either spelling in, one spelling out — `parseUniwebIcon` now emits `url`
-  // for a file-sourced icon, and this builder's documented invariant is that
-  // parseContent(buildDoc(x)) round-trips.
-  if (url || src) attrs.url = url || src
-  if (name) attrs.name = library ? `${library}:${name}` : name
+/**
+ * An icon, as markdown's `![](lu-house)` reads: an `image` with `role: 'icon'`
+ * inside a paragraph — from a library by `library` and `name`, or from a file
+ * by its address.
+ *
+ * `svg` is MARKUP, and a stored document holds none (the vocabulary has no
+ * attribute for it), so an icon given only as markup is left out: the builder
+ * returns null rather than a node that names no picture. A file-sourced icon
+ * arrives as `url` (what the parser emits) or `src`.
+ */
+function iconNode({ src, url, library, name, size, color }) {
+  const attrs = { role: 'icon' }
+  if (src || url) {
+    attrs.src = src || url
+  } else if (name) {
+    // A parsed editor node may carry the family inside the name, `family:id`.
+    // The vocabulary holds the two apart, as `![](lu-house)` reads.
+    if (!library && typeof name === 'string' && name.includes(':')) {
+      const [family, ...id] = name.split(':')
+      library = family
+      name = id.join(':')
+    }
+    if (library) attrs.library = library
+    attrs.name = name
+  } else {
+    return null
+  }
   if (size) attrs.size = size
   if (color) attrs.color = color
-  return { type: 'UniwebIcon', attrs }
+  return { type: 'paragraph', content: [{ type: 'image', attrs }] }
 }
 
-function videoNode({ src, url, caption, placement, coverImg }) {
-  const attrs = { src: src || url }
+const PLAYBACK_FLAGS = ['autoplay', 'muted', 'loop', 'controls']
+
+function videoNode(video) {
+  const { src, url, alt, caption, placement, poster, coverImg } = video
+  const attrs = { src: src || url, role: 'video' }
+  if (alt) attrs.alt = alt
   if (caption) attrs.caption = caption
-  if (placement) attrs.placement = placement // as an image's, above
-  // ⛔ The editor's `Video` node holds `coverImg` as an OBJECT — the reader is
-  // `makeAssetUrl`, which looks for `.src` / `.url` / `.identifier`. A bare
-  // string passed straight through parses back as "": `info?.src` on a string
-  // is undefined. Normalize here so a caller may write either.
-  const cover = typeof coverImg === 'string' ? { src: coverImg } : coverImg
-  if (cover && (cover.src || cover.url || cover.identifier)) attrs.coverImg = cover
-  return { type: 'Video', attrs }
+  // The cover is `poster`, what the parser emits for a video and what a
+  // component reads. `coverImg` is an editor's spelling — a string, or an
+  // object whose `src` or `url` is the address; an `identifier` alone names
+  // no address, so it gives none.
+  const cover = poster || (typeof coverImg === 'string' ? coverImg : coverImg?.src || coverImg?.url)
+  if (cover) attrs.poster = cover
+  if (placement) attrs.placement = placement
+  for (const flag of PLAYBACK_FLAGS) if (typeof video[flag] === 'boolean') attrs[flag] = video[flag]
+  return { type: 'image', attrs }
 }
 
-function dividerBlock() {
-  return { type: 'DividerBlock' }
+function dividerNode() {
+  return { type: 'divider' }
 }
 
 /**
@@ -246,11 +271,11 @@ function listItemText(item) {
 // --- Group builder ---
 
 /**
- * Build TipTap nodes from a content group (main or item).
+ * Build the nodes of a content group (main or item).
  *
  * @param {Object} group - Content structure: { pretitle, title, subtitle, paragraphs, images, ... }
  * @param {number} titleLevel - Heading level for title (1 for main, 2 for items)
- * @returns {Array} Array of TipTap nodes
+ * @returns {Array} the group's nodes, in the vocabulary
  */
 function buildGroupNodes(group, titleLevel = 1, options = {}) {
   const nodes = []
@@ -286,7 +311,7 @@ function buildGroupNodes(group, titleLevel = 1, options = {}) {
 
   if (group.images) {
     for (const img of group.images) {
-      nodes.push(imageBlock(img))
+      nodes.push(imageNode(img))
     }
   }
 
@@ -299,7 +324,8 @@ function buildGroupNodes(group, titleLevel = 1, options = {}) {
 
   if (group.icons) {
     for (const icon of group.icons) {
-      nodes.push(iconNode(icon))
+      const node = iconNode(icon)
+      if (node) nodes.push(node)
     }
   }
 
@@ -351,10 +377,10 @@ function buildGroupNodes(group, titleLevel = 1, options = {}) {
 // --- Main export ---
 
 /**
- * Build a TipTap document from a content structure.
+ * Build a document in the vocabulary from a content structure.
  *
  * This is the reverse of parseContent(): given a flat content object
- * (title, paragraphs, items, etc.), produce a TipTap document that
+ * (title, paragraphs, items, etc.), produce a ProseMirror document that
  * roundtrips through parseContent() to yield the same structure.
  *
  * @param {Object} content - Content structure (same shape as parseContent output / starter)
@@ -362,7 +388,7 @@ function buildGroupNodes(group, titleLevel = 1, options = {}) {
  * @param {string} [options.dataLanguage='yaml'] - the fence a tagged data block
  *   is written as. It is recorded on the node because content-writer reads it
  *   back to choose the fence, and a parsed value cannot say which one it was.
- * @returns {Object|null} TipTap document { type: 'doc', content: [...] }, or null if empty
+ * @returns {Object|null} a document { type: 'doc', content: [...] }, or null if empty
  */
 function buildDoc(content, options = {}) {
   if (!content) return null
@@ -372,10 +398,10 @@ function buildDoc(content, options = {}) {
   // Main group content (title level 1)
   nodes.push(...buildGroupNodes(content, 1, options))
 
-  // Items: separated by DividerBlock (mirrors divider-based grouping in groups.js)
+  // Items: separated by a divider (mirrors divider-based grouping in groups.js)
   if (content.items && content.items.length > 0) {
     for (const item of content.items) {
-      nodes.push(dividerBlock())
+      nodes.push(dividerNode())
       // Item headings use level 2 (one below main H1)
       nodes.push(...buildGroupNodes(item, 2, options))
     }
