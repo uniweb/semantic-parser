@@ -442,6 +442,19 @@ export function sanitizeSVG(svg) {
 }
 
 /**
+ * What in an SVG string falls outside the allowlist `sanitizeSVG` rebuilds
+ * from, reported as `inspectMathML` reports MathML. Empty when the markup is
+ * within it.
+ *
+ * @param {string} svg
+ * @returns {Array<{reason: 'element'|'attribute'|'style'|'markup', element?: string, attribute?: string, value?: string}>}
+ */
+export function inspectSVG(svg) {
+    if (typeof svg !== "string" || !svg) return [];
+    return inspect(svg, SVG);
+}
+
+/**
  * Whether a link may be followed: a relative URL, or `http:`, `https:`,
  * `mailto:`, `tel:`, or the framework's `page:` / `topic:` references. Control
  * characters and spaces are ignored when reading the scheme, as a browser
@@ -452,6 +465,75 @@ export function sanitizeSVG(svg) {
  */
 export function isSafeLink(url) {
     return typeof url === "string" && isSafeUrl(url);
+}
+
+/**
+ * Whether an address may be loaded as an image: a link a page may follow
+ * (`isSafeLink`), or the image itself, as data (`isImageData`).
+ *
+ * @param {string} url
+ * @returns {boolean}
+ */
+export function isImageSource(url) {
+    return isSafeLink(url) || isImageData(url);
+}
+
+/**
+ * Whether a `data:` URL holds an image a page may show: a PNG, JPEG, GIF, WebP
+ * or AVIF in base64, or SVG — percent-encoded or base64 — whose markup is within
+ * the allowlist `sanitizeSVG` rebuilds from. ⭐ Admitted [Diego, 2026-10-16]: a
+ * picture an `<img>` loads runs no script, and a built-in starter image is one.
+ * The URL is read as a browser reads it: tab and newline removed, leading and
+ * trailing spaces and controls trimmed.
+ *
+ * @param {string} url
+ * @returns {boolean}
+ */
+export function isImageData(url) {
+    if (typeof url !== "string") return false;
+    const address = url.replace(/[\t\n\r]/g, "").replace(/^[\u0000- ]+|[\u0000- ]+$/g, "");
+    if (RASTER_DATA.test(address)) return true;
+    const svg = svgOfData(address);
+    return svg !== null && inspect(svg, SVG).length === 0;
+}
+
+const SVG_DATA = /^data:image\/svg\+xml((?:;[^,;]*)*?)(;base64)?,([\s\S]*)$/i;
+
+/** The markup an SVG `data:` URL holds, decoded as a browser decodes it; null for any other URL. */
+function svgOfData(address) {
+    const data = SVG_DATA.exec(address);
+    if (!data) return null;
+    const body = percentDecode(data[3]);
+    if (!data[2]) return body;
+    try {
+        const binary = atob(body.replace(/[\t\n\f\r ]+/g, ""));
+        return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+    } catch {
+        return null;
+    }
+}
+
+/** Percent-decode as a URL is: `%` and two hex digits is a byte, anything else stays, and the bytes are read as UTF-8. */
+function percentDecode(text) {
+    if (!text.includes("%")) return text;
+    const bytes = [];
+    const utf8 = new TextEncoder();
+    let run = "";
+    const flush = () => {
+        for (const byte of utf8.encode(run)) bytes.push(byte);
+        run = "";
+    };
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === "%" && /^[0-9a-f]{2}$/i.test(text.slice(i + 1, i + 3))) {
+            flush();
+            bytes.push(parseInt(text.slice(i + 1, i + 3), 16));
+            i += 2;
+        } else {
+            run += text[i];
+        }
+    }
+    flush();
+    return new TextDecoder().decode(new Uint8Array(bytes));
 }
 
 // ─── Values content may hold ─────────────────────────────────────────────────
@@ -551,6 +633,24 @@ export function allowlists() {
             urlInAValue: "only url(#id), a reference within the document",
             style: "declaration by declaration: a property of letters and -, a value with none of \\ < > { } /* and no unsafe value",
             markup: "no comment, doctype or processing instruction; CDATA is text",
+        },
+        imageData: {
+            raster: RASTER_DATA.source,
+            rasterFlags: "i",
+            svg: {
+                mediaType: "image/svg+xml, with any parameters, and `;base64` when the body is base64",
+                decoding: "the body percent-decoded as a URL is (`%` and two hex digits is a byte, anything else stays), then base64-decoded when marked, read as UTF-8",
+                elements: [...SVG_ELEMENTS.values()],
+                attributes: [...SVG_ATTRIBUTES.values()],
+                commonAttributes: "class, id, role, dir, aria-<letters>, data-<letters, digits and ->",
+                droppedWithContent: [...DROP_WITH_CONTENT],
+                neverAttributes: "on…, in any case; src",
+                references: "href and xlink:href only: a fragment, `#` then a letter then letters, digits, _ . : or -; on `image`, also a raster image matching `raster`, or a URL with no scheme or one of the link schemes",
+                unsafeValue: UNSAFE_VALUE.source,
+                urlInAValue: "only url(#id), a reference within the document",
+                style: "declaration by declaration: a property of letters and -, a value with none of \\ < > { } /* and no unsafe value",
+                markup: "no comment, doctype or processing instruction; CDATA is text",
+            },
         },
     };
 }

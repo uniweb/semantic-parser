@@ -3,7 +3,10 @@ import {
     sanitizeMathML,
     sanitizeSVG,
     inspectMathML,
+    inspectSVG,
     isSafeLink,
+    isImageData,
+    isImageSource,
     isLinkTarget,
     isStyleName,
     isCssColor,
@@ -158,6 +161,57 @@ describe("isSafeLink", () => {
         "%j may not",
         (url) => expect(isSafeLink(url)).toBe(false),
     );
+});
+
+describe("an image's address, and the image itself as data", () => {
+    // What `@uniweb/schemas/starter` builds for a placeholder: SVG, encoded whole.
+    const placeholder = `data:image/svg+xml,${encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-hidden="true"><rect width="1600" height="900" fill="currentColor" opacity="0.06"/><g fill="currentColor" opacity="0.22"><circle cx="680" cy="321" r="52"/><path d="M494 640 L718 400 Z"/></g></svg>',
+    )}`;
+    const base64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+
+    test("SVG within the allowlist is an image, percent-encoded or base64, with or without parameters", () => {
+        expect(isImageData(placeholder)).toBe(true);
+        expect(isImageData(`data:image/svg+xml;base64,${base64('<svg viewBox="0 0 1 1"><rect width="1" height="1"/></svg>')}`)).toBe(true);
+        expect(isImageData('data:image/svg+xml;charset=utf-8,<svg><text>100% — é</text></svg>')).toBe(true);
+        expect(isImageData(`DATA:IMAGE/SVG+XML;charset=utf-8;base64,${base64("<svg/>")}`)).toBe(true);
+    });
+
+    test("SVG outside it is not — however it is encoded", () => {
+        expect(isImageData('data:image/svg+xml,<svg onload="alert(1)"/>')).toBe(false);
+        expect(isImageData(`data:image/svg+xml,${encodeURIComponent("<svg><script>alert(1)</script></svg>")}`)).toBe(false);
+        expect(isImageData(`data:image/svg+xml;base64,${base64("<svg><foreignObject><div/></foreignObject></svg>")}`)).toBe(false);
+        expect(isImageData("data:image/svg+xml,<svg><style>*{fill:red}</style></svg>")).toBe(false);
+        expect(isImageData('data:image/svg+xml,<svg><image href="data:image/svg+xml,%3Csvg/%3E"/></svg>')).toBe(false);
+        expect(isImageData("data:image/svg+xml;base64,not base64!")).toBe(false);
+    });
+
+    test("a raster image is one in base64; another media type is not", () => {
+        expect(isImageData("data:image/png;base64,iVBORw0KGgo=")).toBe(true);
+        expect(isImageData(" data:image/jpeg;base64,/9j/4AAQ ")).toBe(true);
+        expect(isImageData("data:image/png,iVBORw0KGgo")).toBe(false);
+        expect(isImageData("data:image/bmp;base64,Qk0=")).toBe(false);
+        expect(isImageData("data:text/html,<script>alert(1)</script>")).toBe(false);
+        expect(isImageData("/a.png")).toBe(false);
+    });
+
+    test("an image's address is a link a page may follow, or the image as data", () => {
+        for (const url of ["/media/a.png", "https://x.test/a.jpg", placeholder, "data:image/webp;base64,UklGRg=="]) {
+            expect(isImageSource(url)).toBe(true);
+        }
+        for (const url of ["javascript:alert(1)", "data:text/html,<b>", 'data:image/svg+xml,<svg onload="x"/>', "vbscript:x"]) {
+            expect(isImageSource(url)).toBe(false);
+        }
+    });
+
+    test("inspectSVG names what a rebuild leaves out, and nothing for an icon", () => {
+        expect(inspectSVG('<svg onload="alert(1)"><script>x</script><path d="M0 0"/></svg>')).toEqual([
+            { reason: "attribute", element: "svg", attribute: "onload" },
+            { reason: "element", element: "script" },
+        ]);
+        expect(inspectSVG('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10v9"/></svg>')).toEqual([]);
+        expect(inspectSVG("")).toEqual([]);
+    });
 });
 
 describe("inspectMathML — what a rebuild would leave out, reported", () => {
