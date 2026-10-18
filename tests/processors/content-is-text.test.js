@@ -135,10 +135,13 @@ describe("named styles and spans", () => {
     test("a colour is a colour, or nothing", () => {
         expect(render([text("x", [span({ color: "rgb(1, 2, 3)" })])])).toBe('<span style="color: rgb(1, 2, 3)">x</span>');
         expect(render([text("x", [span({ color: "red; background:url(x)" })])])).toBe("<span>x</span>");
-        expect(render([text("x", [{ type: "textStyle", attrs: { color: 'a) ; x"' } }])])).toBe("x");
-        expect(render([text("x", [{ type: "textStyle", attrs: { color: "accent" } }])])).toBe(
-            '<span style="color: var(--accent)">x</span>',
-        );
+    });
+
+    test("the editor's own marks are not read — its text renders bare", () => {
+        // ⛔ Until 2026-10-18 `textStyle` became `color: var(--<token>)` and
+        // `highlight` a background. The editor saves both as `span`.
+        expect(render([text("x", [{ type: "textStyle", attrs: { color: "accent" } }])])).toBe("x");
+        expect(render([text("x", [{ type: "highlight" }])])).toBe("x");
     });
 });
 

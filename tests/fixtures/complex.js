@@ -102,7 +102,7 @@ export const complexGroups = {
       content: [{ type: "text", text: "Main content." }],
     },
     {
-      type: "horizontalRule",
+      type: "divider",
     },
     {
       type: "heading",

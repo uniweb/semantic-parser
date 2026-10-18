@@ -165,7 +165,7 @@ Key patterns — the staircase rule (each heading relates to the one before it):
 - **Subtitle**: one step below the title, directly adjacent — and each further one-step descent (or same-size repeat) is another subtitle line. String or array.
 - **Items**: a heading two or more steps below the previous one, a step back up, or any heading after body content starts a new group.
 - **Banner Pattern**: an image (with banner role or followed by a heading) at the start of the first group stays with the headline.
-- **Dividers**: a `horizontalRule` explicitly closes the current group; it composes with the heading rules rather than replacing them.
+- **Dividers**: a `divider` (`---` in markdown) explicitly closes the current group; it composes with the heading rules rather than replacing them.
 - **Main Content**: the first group is main if it's the only group, has a more important heading level than the second group, or has no heading at all.
 - **Body Headings**: `body.headings` fills only from nested content (blockquote children, list items) — a section's headline never spills there.
 

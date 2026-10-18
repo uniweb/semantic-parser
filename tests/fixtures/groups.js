@@ -11,14 +11,14 @@ export const dividerGroups = {
             content: [{ type: "text", text: "Main content." }],
         },
         {
-            type: "horizontalRule",
+            type: "divider",
         },
         {
             type: "paragraph",
             content: [{ type: "text", text: "First group content." }],
         },
         {
-            type: "horizontalRule",
+            type: "divider",
         },
         {
             type: "paragraph",

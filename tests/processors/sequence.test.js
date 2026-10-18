@@ -598,57 +598,6 @@ describe("processSequence", () => {
     });
   });
 
-  describe("StructuredContent — the editor's form node", () => {
-    test("parses object data and carries schemaId", () => {
-      const doc = {
-        type: "doc",
-        content: [
-          {
-            type: "StructuredContent",
-            attrs: {
-              activeSchemaId: "stats",
-              data: [{ number: "42", text: "Users" }],
-            },
-          },
-        ],
-      };
-
-      const result = processSequence(doc);
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe("form");
-      expect(result[0].schemaId).toBe("stats");
-      expect(result[0].data).toEqual([{ number: "42", text: "Users" }]);
-    });
-
-    test("parses stringified JSON data", () => {
-      const doc = {
-        type: "doc",
-        content: [
-          {
-            type: "StructuredContent",
-            attrs: {
-              activeSchemaId: "side-content",
-              data: '{"for":"scholar","department":"CS"}',
-            },
-          },
-        ],
-      };
-
-      const result = processSequence(doc);
-      expect(result[0].schemaId).toBe("side-content");
-      expect(result[0].data).toEqual({ for: "scholar", department: "CS" });
-    });
-
-    test("emits schemaId=null when activeSchemaId missing", () => {
-      const doc = {
-        type: "doc",
-        content: [{ type: "StructuredContent", attrs: { data: {} } }],
-      };
-      const result = processSequence(doc);
-      expect(result[0].schemaId).toBeNull();
-    });
-  });
-
 });
 
 describe('inset_block — a component reference with block content', () => {
@@ -698,6 +647,11 @@ describe("the editor's retired node types deliver nothing", () => {
     { type: "document-group", content: [{ type: "document", attrs: { src: "/r.pdf", title: "Report" } }] },
     { type: "FormBlock", attrs: { activeSchemaId: "stats", data: { a: 1 } } },
     { type: "button", attrs: { href: "/go" }, content: [{ type: "text", text: "Go" }] },
+    // Read until later on 2026-10-18 — the editor writes `dataBlock` and
+    // `divider` itself now (frontend, measured that day).
+    { type: "StructuredContent", attrs: { activeSchemaId: "stats", data: { a: 1 } } },
+    { type: "DividerBlock", attrs: { type: "dot" } },
+    { type: "horizontalRule" },
   ];
 
   for (const node of RETIRED) {
@@ -707,6 +661,9 @@ describe("the editor's retired node types deliver nothing", () => {
         expect(parsed[key], key).toEqual([]);
       }
       expect(parsed.data).toEqual({});
+      const types = parsed.sequence.map((el) => el.type);
+      expect(types).not.toContain("divider");
+      expect(types).not.toContain("form");
     });
   }
 });
@@ -967,14 +924,15 @@ describe("tables carry structure, not a flattened string", () => {
     });
 });
 
-describe("divider — all three spellings are one element", () => {
-    // `divider` is content-reader's name; horizontalRule and DividerBlock are
-    // the editor's. The reader's own name was missing until 2026-07-30, so
-    // markdown dividers reached consumers only by falling through `default:`,
-    // which happens to produce `{ type: 'divider', content: '' }` and happens
-    // to match what downstream keys on. It worked by coincidence.
-    test.each(["divider", "horizontalRule", "DividerBlock"])("%s", (type) => {
-        const [el] = processSequence({ type: "doc", content: [{ type }] });
-        expect(el.type).toBe("divider");
+describe("divider — the vocabulary's one spelling", () => {
+    // The reader's own name was missing until 2026-07-30, so markdown dividers
+    // reached consumers only by falling through `default:`, which happens to
+    // produce `{ type: 'divider', content: '' }` and happens to match what
+    // downstream keys on. It worked by coincidence. The editor's spellings,
+    // `horizontalRule` and `DividerBlock`, were read too until 2026-10-18 (see
+    // the retired node types above).
+    test("divider", () => {
+        const [el] = processSequence({ type: "doc", content: [{ type: "divider", attrs: { type: "dots" } }] });
+        expect(el).toEqual({ type: "divider", attrs: { type: "dots" } });
     });
 });

@@ -299,41 +299,23 @@ function createSequenceElement(node, options = {}) {
             return { type: "table", rows, attrs };
         }
 
-        // `divider` is what content-reader emits; `horizontalRule` and
-        // `DividerBlock` are the editor's spellings. All three are one element.
-        //
         // The reader's own name was NOT listed here until 2026-07-30 — markdown
         // dividers reached consumers only by falling through `default:`, which
         // happens to produce `{ type: 'divider', content: '' }` and happens to
         // match what everything downstream keys on. It worked by coincidence,
         // and the coincidence would have broken the moment `default:` changed.
+        //
+        // ⭐ The vocabulary's names are the only ones read. ⛔ Until 2026-10-18 the
+        // editor's spellings were read too: `DividerBlock` and `horizontalRule` as
+        // a divider, and its form node — `StructuredContent`, and `FormBlock`, its
+        // name before 2026-07-31 — as a `form` element whose data landed at
+        // `content.data[<schema id>]`. The editor writes `divider` and `dataBlock`
+        // itself now, and no writer produces the others, as none does its
+        // `card-group`, `document-group`, `ImageBlock`, `Video`, `UniwebIcon`,
+        // `Icon` and `button` nodes.
         case "divider":
-        case "DividerBlock":
-        case "horizontalRule":
             return {
                 type: "divider",
-                attrs,
-            };
-
-        // The editor's form node. ⛔ Until 2026-10-18 its name before
-        // 2026-07-31, `FormBlock`, was read too — and the editor's `card-group`,
-        // `document-group`, `ImageBlock`, `Video`, `UniwebIcon`, `Icon` and
-        // `button` nodes, which no writer produces now.
-        case "StructuredContent":
-            // Parse form data (can be JSON string or object)
-            let formData = attrs?.data;
-            if (typeof formData === "string") {
-                try {
-                    formData = JSON.parse(formData);
-                } catch (err) {
-                    // Keep as string
-                }
-            }
-
-            return {
-                type: "form",
-                schemaId: attrs?.activeSchemaId || null,
-                data: formData,
                 attrs,
             };
 
@@ -471,24 +453,13 @@ function renderInlineNode(curr, iconOrdinals, pictureOrdinals) {
             if (type === "text") {
                 let styledText = escapeText(text || "");
 
-                // Apply marks in order: textStyle, highlight, bold, italic, link
-                // This ensures proper nesting
-
-                // textStyle (color)
-                if (marks.some((mark) => mark.type === "textStyle")) {
-                    const color = marks.find(
-                        (mark) => mark.type === "textStyle"
-                    )?.attrs?.color;
-                    // A theme token's name, or nothing — it lands inside `var(--…)`.
-                    if (typeof color === "string" && /^[a-zA-Z0-9-]+$/.test(color)) {
-                        styledText = `<span style="color: var(--${color})">${styledText}</span>`;
-                    }
-                }
-
-                // highlight
-                if (marks.some((mark) => mark.type === "highlight")) {
-                    styledText = `<span style="background-color: var(--highlight)">${styledText}</span>`;
-                }
+                // Apply marks in order: span, code, bold, italic — the link is
+                // applied per group by getTextContent. This ensures proper nesting.
+                //
+                // ⛔ Until 2026-10-18 the editor's `textStyle` (a theme color) and
+                // `highlight` marks were applied first. The editor saves both as
+                // the vocabulary's `span` — `[x]{accent}`, `[x]{highlight}` — so
+                // neither is read now.
 
                 // span (bracketed spans with class/id/attributes)
                 if (marks.some((mark) => mark.type === "span")) {

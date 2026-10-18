@@ -500,19 +500,10 @@ function processGroupContent(elements, options = {}) {
                     body.media.push({ refId: element.refId, kind: "inset" });
                     break;
 
-                case "form":
-                    // Route a form's data by the schema id it targets, so it
-                    // shares a namespace with tagged markdown data blocks
-                    // (```yaml:<id>``` also lands at data[<id>]). When no
-                    // schemaId is present (legacy content), fall back to the
-                    // literal key "form" — eventual deprecation.
-                    {
-                        const payload = element.data || element.attrs;
-                        const key = element.schemaId || "form";
-                        body.data[key] = payload;
-                    }
-                    break;
-
+                // ⛔ A `form` element was routed here until 2026-10-18 — the
+                // editor's form node, its data at `data[<schema id>]`, else at
+                // `data.form`. The node is read nowhere now: a form's data is a
+                // tagged data block, which lands at `data[<tag>]` above.
             }
         }
     }
