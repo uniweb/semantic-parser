@@ -243,8 +243,8 @@ function createSequenceElement(node, options = {}) {
                     attrs: parseMarkdownVideo(attrs, options),
                 };
             }
-            // Standard ProseMirror image node - resolve attrs the same way as
-            // ImageBlock so info.identifier lands as a CDN URL. CLI-deployed
+            // Standard ProseMirror image node - read through parseImgBlock, as
+            // ImageBlock is, so its address lands in `url`. CLI-deployed
             // content uses this node type; without parseImgBlock the url
             // wouldn't be populated and components render an empty slot.
             return {
@@ -791,46 +791,18 @@ function secondaryAssetUrl(attrs, options, urlAttr) {
     return resolved || attrs?.[urlAttr] || "";
 }
 
-// ⛔ LEGACY BELOW — the PHP-estate identifier path. Do not extend it.
-//
-// `{version}/{filename}` identifiers have no current producer — the CLI emits
-// `src`, and editors store the URL their host hands them. Only content authored
-// against the original hosted service still carries one, and the hardcoded host
-// below cannot be correct for any other deployment: the CLI can be pointed at
-// any host. New references use `assetId`/`assetExt` above.
-const ASSET_BASE_URL = "https://assets.uniweb.app/";
-
 /**
- * Resolve an asset identifier ({version}/{filename}) to a direct URL.
- * Assets are hosted at assets.uniweb.app under dist/{version}/base.{ext}.
+ * The address an editor's media object holds — its `src`, else its `url` (a
+ * `coverImg`, a node's `info`).
+ *
+ * ⛔ No asset host is built into this package. A reference resolves through the
+ * pattern the host declares (`assetUrlFromAttrs` above) or is the address the
+ * content holds; nothing else turns one into a URL. Until 2026-10-17 an
+ * `info.identifier` (`{version}/{filename}`) was composed here against a fixed
+ * host; it is not read.
  */
-function resolveAssetIdentifier(identifier) {
-    if (!identifier || typeof identifier !== "string") return "";
-    // ⛔ An identifier that is ALREADY a URL or a rooted path is not an
-    // identifier — it is a serve URL sitting in the identifier slot, and it is
-    // usable exactly as it stands. Composing it against the legacy base
-    // destroys it: `split("/")` on `/gateway/asset/dist/{id}/base.png` takes
-    // `""` as the version and `"gateway"` as the filename, yielding
-    // `https://assets.uniweb.app/dist//base.gateway` — not a 404 and not a
-    // validation failure, a URL-shaped string that renders a broken image and
-    // reads like a missing file.
-    //
-    // The legacy grammar is `{version}/{filename}` with no leading slash, so
-    // nothing legitimate is caught here. Passing it through is not constructing
-    // a serve location: it is declining to construct one over a value that is
-    // already an address. (Measured 2026-08-17 against a real producer.)
-    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\/)/i.test(identifier)) return identifier;
-    const [version, filename] = identifier.split("/");
-    if (!filename) return "";
-    const ext = filename.substring(filename.lastIndexOf(".") + 1);
-    return `${ASSET_BASE_URL}dist/${version}/base.${ext}`;
-}
-
-function makeAssetUrl(info) {
-    const src = info?.src || info?.url || "";
-    if (src) return src;
-    if (info?.identifier) return resolveAssetIdentifier(info.identifier);
-    return "";
+function storedUrl(ref) {
+    return ref?.src || ref?.url || "";
 }
 
 function parseCardBlock(itemAttrs) {
@@ -853,7 +825,7 @@ function parseCardBlock(itemAttrs) {
     return {
         ...others,
         address: parsedAddress,
-        coverImg: makeAssetUrl(coverImg),
+        coverImg: storedUrl(coverImg),
     };
 }
 
@@ -900,12 +872,11 @@ function fileFacts(url, attrs = {}) {
     };
 }
 
-// The editor's older `document` node — its `title`, `coverImg` and `src` (or
-// asset identifier) — read into the same shape a markdown document has.
+// The editor's older `document` node — its `title`, `coverImg` and `src` —
+// read into the same shape a markdown document has.
 function documentFromEditorNode(itemAttrs) {
     const {
         href,
-        downloadUrl,
         title = "",
         alt = "",
         coverImg,
@@ -913,7 +884,7 @@ function documentFromEditorNode(itemAttrs) {
         description,
         fileType,
     } = parseDocumentBlock(itemAttrs || {});
-    const url = href || downloadUrl || "";
+    const url = href || "";
     return {
         url,
         ...fileFacts(url, itemAttrs),
@@ -928,22 +899,15 @@ function documentFromEditorNode(itemAttrs) {
 }
 
 function parseDocumentBlock(itemAttrs) {
-    const { src, info = {}, coverImg = null, ...others } = itemAttrs;
+    // `info` is the editor's envelope: kept out of the element, and not read.
+    const { src, info, coverImg = null, ...others } = itemAttrs;
 
     let ele = {
         ...others,
-        coverImg: makeAssetUrl(coverImg),
+        coverImg: storedUrl(coverImg),
     };
 
-    if (src) {
-        ele.href = src;
-    } else {
-        const { identifier = "" } = info;
-
-        if (identifier) {
-            ele.downloadUrl = resolveAssetIdentifier(identifier);
-        }
-    }
+    if (src) ele.href = src;
 
     return ele;
 }
@@ -1053,7 +1017,7 @@ function parseImgBlock(itemAttrs, options) {
         description, // role=pdf — describes the RESOURCE, not the image (≠ alt)
     } = itemAttrs;
 
-    let { contentType, viewType, contentId, identifier } = imgInfo || {};
+    let { contentType, viewType, contentId } = imgInfo || {};
 
     caption = stripTags(caption);
     const attribution = author || credit;
@@ -1068,14 +1032,9 @@ function parseImgBlock(itemAttrs, options) {
     // `config.assets.url`: until one does, resolution yields '' and the node
     // renders through `src` exactly as it does today. Content written now stays
     // correct whichever order the halves arrive in.
-    //
-    // `identifier` is the LEGACY estate path and keeps its old precedence over a
-    // stale `src`.
     const assetUrl = assetUrlFromAttrs(itemAttrs, options);
     if (assetUrl) {
         url = assetUrl;
-    } else if (identifier) {
-        url = makeAssetUrl(imgInfo);
     } else if (!url && src) {
         url = src;
     }
@@ -1085,7 +1044,6 @@ function parseImgBlock(itemAttrs, options) {
         viewType,
         contentId: targetId || contentId,
         url,
-        value: identifier || "",
         alt: alt || caption,
         caption,
         href,
@@ -1136,18 +1094,11 @@ function parseMarkdownVideo(itemAttrs, options) {
         placement, // where it sits in a flow, same as parseImgBlock
     } = itemAttrs || {};
 
-    // Reference precedence, now genuinely identical to parseImgBlock: a
-    // resolvable store-held asset, then the legacy identifier, then the authored
-    // src/url.
-    //
-    // ⚠️ The comment here used to claim identifier-precedence "matching
-    // parseImgBlock" while the code did the opposite — it passed `src` INTO
-    // `makeAssetUrl`, which returns a src/url before it ever looks at
-    // `identifier`. So image and video resolved differently for years and the
-    // comment asserted they did not. Aligned to the documented intent (2026-08-17).
+    // Reference precedence, as parseImgBlock's: a resolvable store-held asset,
+    // then the address the node holds.
     const assetUrl = assetUrlFromAttrs(itemAttrs, options);
     const video = {
-        src: assetUrl || makeAssetUrl(info) || url || src || "",
+        src: assetUrl || storedUrl(info) || url || src || "",
         alt,
         caption: stripTags(caption),
         role,
@@ -1185,13 +1136,13 @@ function parseVideoBlock(itemAttrs, options) {
     } = itemAttrs;
 
     // Same precedence as parseImgBlock / parseMarkdownVideo: a resolvable
-    // store-held asset, then the legacy identifier, then the authored src.
-    const video = assetUrlFromAttrs(itemAttrs, options) || makeAssetUrl(info) || src || "";
+    // store-held asset, then the address the node holds.
+    const video = assetUrlFromAttrs(itemAttrs, options) || storedUrl(info) || src || "";
 
     return {
         src: video,
         caption,
-        coverImg: makeAssetUrl(coverImg),
+        coverImg: storedUrl(coverImg),
         alt,
         href,
         target,

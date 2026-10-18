@@ -131,13 +131,9 @@ describe('video precedence — aligned with image', () => {
     expect(el.attrs.src).toBe('/old.mp4')
   })
 
-  it('⚠️ a legacy identifier now beats a stale src, matching the image path', () => {
-    // The comment on this parser claimed parity with parseImgBlock for years
-    // while the code did the opposite — it passed `src` into makeAssetUrl, which
-    // returns a src before it looks at `identifier`. Aligned to the documented
-    // intent 2026-08-17; this pins the direction so it cannot drift back.
-    const el = videoOf({ src: '/stale.mp4', info: { identifier: 'v1/clip.mp4' } })
-    expect(el.attrs.src).toBe('https://assets.uniweb.app/dist/v1/base.mp4')
+  it('an info.identifier is not read — the src renders', () => {
+    const el = videoOf({ src: '/clip.mp4', info: { identifier: 'v1/clip.mp4' } })
+    expect(el.attrs.src).toBe('/clip.mp4')
   })
 })
 
@@ -218,41 +214,51 @@ describe('every node shape the editor can emit resolves', () => {
   })
 })
 
-describe('a URL in the identifier slot is passed through, never composed', () => {
-  // ⛔ A live producer writes a serve URL into `info.identifier` and no `src`
-  // beside it (the app's per-locale image swap). Composing that against the
-  // legacy base yields `https://assets.uniweb.app/dist//base.gateway` — not a
-  // 404 and not a validation failure, a URL-shaped string that renders a broken
-  // image and reads like a missing file. The value is already an address;
-  // declining to compose over it is not constructing one.
-  const urlOf = (identifier) =>
-    parseContent({
+describe('⛔ no asset host is built in', () => {
+  // A reference resolves through the pattern the host declares, or is the
+  // address the content holds. Until 2026-10-17 an `info.identifier`
+  // (`{version}/{filename}`) was composed against a fixed host; nothing turns
+  // one into a URL now, with or without a pattern.
+  const imageWith = (attrs, options) =>
+    imageOf({ type: 'doc', content: [{ type: 'image', attrs }] }, options)
+
+  it('an image whose only reference is an identifier has no url', () => {
+    expect(imageWith({ info: { identifier: 'a1b2c3d4-e5f6/photo.jpg' } }).attrs.url).toBeFalsy()
+    expect(
+      imageWith({ info: { identifier: 'a1b2c3d4-e5f6/photo.jpg' } }, { assets: { url: TEMPLATE } })
+        .attrs.url
+    ).toBeFalsy()
+  })
+
+  it('a video whose only reference is an identifier has no src', () => {
+    const el = parseContent({
       type: 'doc',
-      content: [{ type: 'image', attrs: { info: { identifier } } }],
-    }).sequence.find((e) => e.type === 'image').attrs.url
-
-  it('passes a rooted serve path through', () => {
-    expect(urlOf('/gateway/asset/dist/9f2c/base.png')).toBe(
-      '/gateway/asset/dist/9f2c/base.png'
-    )
+      content: [{ type: 'Video', attrs: { info: { identifier: 'v1/clip.mp4' } } }],
+    }).sequence.find((e) => e.type === 'video')
+    expect(el.attrs.src).toBe('')
   })
 
-  it('passes an absolute URL through', () => {
-    expect(urlOf('https://cdn.example/dist/9f2c/base.png')).toBe(
-      'https://cdn.example/dist/9f2c/base.png'
-    )
+  it("an editor document whose only reference is an identifier has no url", () => {
+    const [el] = parseContent({
+      type: 'doc',
+      content: [
+        {
+          type: 'document-group',
+          content: [{ type: 'document', attrs: { title: 'Report', info: { identifier: 'v1/report.pdf' } } }],
+        },
+      ],
+    }).sequence.filter((e) => e.type === 'document')
+    expect(el.attrs.url).toBe('')
   })
 
-  it('passes a protocol-relative URL through', () => {
-    expect(urlOf('//cdn.example/x.png')).toBe('//cdn.example/x.png')
+  it('the image element carries no `value` — it held the identifier', () => {
+    expect(imageWith({ src: '/p.png', info: { identifier: 'v1/p.png' } }).attrs).not.toHaveProperty('value')
   })
 
-  it('CONTROL: a genuine legacy identifier still composes against the legacy base', () => {
-    // Without this, the guard could be swallowing the whole legacy path and the
-    // three assertions above would still pass.
-    expect(urlOf('a1b2c3d4-e5f6/photo.jpg')).toBe(
-      'https://assets.uniweb.app/dist/a1b2c3d4-e5f6/base.jpg'
-    )
+  it('CONTROL: a src beside an identifier renders the src', () => {
+    // Without this, the parse could be dropping the whole node and the
+    // assertions above would still pass.
+    expect(imageWith({ src: '/p.png', info: { identifier: 'v1/p.png' } }).attrs.url).toBe('/p.png')
   })
 })
 
