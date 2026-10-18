@@ -280,6 +280,24 @@ or `[#id]{k=v}` references. Two artifacts ship to consumers:
 The two views stay in lockstep — both record every inline inset the
 parser sees, in source order.
 
+### Inline Icons and Pictures
+
+An icon or a picture beside text stays in its paragraph, and it is carried
+the same two ways:
+
+1. **`children` carries an `icon` or an `image` entry** — the icon's library
+   and name, the picture's resolved `url` and its `alt`.
+
+2. **`text` carries a marker at its position** —
+   `<uniweb-icon data-index="N"></uniweb-icon>` or
+   `<uniweb-image data-index="N"></uniweb-image>`, where `N` is its ordinal
+   among the paragraph's icons, or among its pictures
+   (`children.filter(c => c.type === 'image')[N]`).
+
+A renderer that reads `text` as HTML and does not know a marker draws
+nothing for it, as for any empty element it does not know. kit's `<Render>`
+draws an icon with `<Icon>` and a picture with `<Image>`.
+
 ## Use Cases
 
 - **Component-based websites**: Extract structured data for React/Vue components

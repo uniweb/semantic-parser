@@ -23,6 +23,17 @@ function isIconNode(node) {
 }
 
 /**
+ * Is an inline node a picture — an `image` that is not an icon, a video or a
+ * file? These are the nodes processInlineElements() delivers as `image`
+ * children, so the marker's ordinal (getTextContent) counts exactly them.
+ */
+function isInlinePicture(node) {
+    if (node?.type !== "image" || isIconNode(node)) return false;
+    const role = node.attrs?.role;
+    return role !== "video" && role !== "pdf";
+}
+
+/**
  * Process a ProseMirror/TipTap document into a flat sequence
  * @param {Object} doc ProseMirror document
  * @param {Object} options Parsing options
@@ -424,16 +435,22 @@ function getTextContent(content, options = {}) {
     // one with `children.filter(c => c.type === 'icon')[index]`. Referencing by
     // ordinal rather than serializing the attrs keeps an inline `svg` blob out
     // of the text stream and leaves `children` the single source of truth.
+    //
+    // A picture beside text is marked the same way, by its ordinal among the
+    // pictures of this array — `children.filter(c => c.type === 'image')[index]`.
     const iconOrdinals = new Map();
+    const pictureOrdinals = new Map();
     let nextIcon = 0;
+    let nextPicture = 0;
     for (const node of content) {
         if (isIconNode(node)) iconOrdinals.set(node, nextIcon++);
+        else if (isInlinePicture(node)) pictureOrdinals.set(node, nextPicture++);
     }
 
     return groups
         .reduce((prev, group) => {
             const inner = group.nodes.reduce(
-                (acc, node) => acc + renderInlineNode(node, iconOrdinals),
+                (acc, node) => acc + renderInlineNode(node, iconOrdinals, pictureOrdinals),
                 "",
             );
             if (!inner && !group.link) return prev;
@@ -446,7 +463,7 @@ function getTextContent(content, options = {}) {
  * Render one inline node to HTML, applying every mark EXCEPT link — the
  * anchor is applied per group by getTextContent, since it may span nodes.
  */
-function renderInlineNode(curr, iconOrdinals) {
+function renderInlineNode(curr, iconOrdinals, pictureOrdinals) {
     return [curr]
         .reduce((prev, curr) => {
             const { type, marks = [], text } = curr;
@@ -574,6 +591,18 @@ function renderInlineNode(curr, iconOrdinals) {
                 const index = iconOrdinals?.get(curr);
                 if (index === undefined) return prev;
                 return prev + `<uniweb-icon data-index="${index}"></uniweb-icon>`;
+            } else if (isInlinePicture(curr)) {
+                // A picture sitting IN the prose — `as the figure ![](./cells.jpg)
+                // shows` — marked for the icon's reason: a renderer draws it with a
+                // component (kit's <Image>), from the entry processInlineElements()
+                // puts in `children`, its address resolved there.
+                //
+                // ⛔ Until 2026-10-18 it fell through to the catch-all below, as an
+                // icon did before 2026-08-12: the text kept a gap, the picture stayed
+                // in `children` and `content.images`, and a walker drew nothing.
+                const index = pictureOrdinals?.get(curr);
+                if (index === undefined) return prev;
+                return prev + `<uniweb-image data-index="${index}"></uniweb-image>`;
             } else {
                 // console.warn(`unhandled text content type: ${type}`, curr);
                 return prev;
