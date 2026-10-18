@@ -222,8 +222,8 @@ parser builds — a `<` someone typed shows as `<`. Marks become tags:
 ```
 
 A link is drawn only when its URL may be followed — relative, or `http:`,
-`https:`, `mailto:`, `tel:`, `page:` or `topic:`. Any other, such as
-`javascript:`, leaves its text unlinked. A `button` mark is a link whose `role`
+`https:`, `mailto:`, `tel:` or `page:`. Any other, such as `javascript:`,
+leaves its text unlinked. A `button` mark is a link whose `role`
 is `button`.
 
 ### Span Marks

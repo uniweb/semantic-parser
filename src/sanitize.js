@@ -172,10 +172,9 @@ function cleanStyle(value) {
 
 /**
  * The schemes a link may use: the web, mail and phone, and the framework's own
- * references to a page (`page:`, and the older `topic:`), which kit resolves to
- * a route at render.
+ * reference to a page, `page:`, which kit resolves to a route at render.
  */
-const LINK_SCHEMES = new Set(["http", "https", "mailto", "tel", "page", "topic"]);
+const LINK_SCHEMES = new Set(["http", "https", "mailto", "tel", "page"]);
 
 /** A link a document may follow: relative, or one of LINK_SCHEMES. */
 function isSafeUrl(value) {
@@ -473,7 +472,7 @@ export function inspectSVG(svg) {
 
 /**
  * Whether a link may be followed: a relative URL, or `http:`, `https:`,
- * `mailto:`, `tel:`, or the framework's `page:` / `topic:` references. Control
+ * `mailto:`, `tel:`, or the framework's `page:` reference. Control
  * characters and spaces are ignored when reading the scheme, as a browser
  * ignores them, so `java\tscript:` is read as `javascript:`.
  *

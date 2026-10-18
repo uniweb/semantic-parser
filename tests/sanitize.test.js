@@ -152,12 +152,12 @@ describe("sanitizeSVG", () => {
 });
 
 describe("isSafeLink", () => {
-    test.each(["/about", "about", "#top", "?q=1", "https://x.test", "http://x.test", "mailto:a@x.test", "tel:+1", "page:93dc5359", "topic:intro", "//x.test/a"])(
+    test.each(["/about", "about", "#top", "?q=1", "https://x.test", "http://x.test", "mailto:a@x.test", "tel:+1", "page:93dc5359", "//x.test/a"])(
         "%s may be followed",
         (url) => expect(isSafeLink(url)).toBe(true),
     );
 
-    test.each(["javascript:alert(1)", "JaVaScRiPt:alert(1)", " javascript:alert(1)", "java\tscript:alert(1)", "java\nscript:alert(1)", "data:text/html,<b>", "vbscript:x", "file:///etc/passwd"])(
+    test.each(["javascript:alert(1)", "JaVaScRiPt:alert(1)", " javascript:alert(1)", "java\tscript:alert(1)", "java\nscript:alert(1)", "data:text/html,<b>", "vbscript:x", "file:///etc/passwd", "topic:intro"])(
         "%j may not",
         (url) => expect(isSafeLink(url)).toBe(false),
     );
