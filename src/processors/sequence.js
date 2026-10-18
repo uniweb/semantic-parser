@@ -3,7 +3,6 @@ import {
     escapeText,
     escapeAttribute as escapeAttr,
     sanitizeMathML,
-    sanitizeSVG,
     isSafeLink,
     isLinkTarget,
     isStyleName,
@@ -18,12 +17,9 @@ import {
 // rule that a text node held HTML — so `<img src=x onerror=…>` written in
 // content ran on the published page, and `if a<b then` showed as `if a`.
 
-/**
- * Check if an inline node is an icon.
- * TipTap editor uses type "UniwebIcon"; markdown pipeline uses type "image" with role "icon".
- */
+/** Check if an inline node is an icon: an `image` with role "icon". */
 function isIconNode(node) {
-    return node.type === "UniwebIcon" || (node.type === "image" && node.attrs?.role === "icon");
+    return node.type === "image" && node.attrs?.role === "icon";
 }
 
 /**
@@ -207,11 +203,6 @@ function createSequenceElement(node, options = {}) {
                 mathml: sanitizeMathML(node.attrs?.mathml || ""),
                 attrs,
             };
-        case "ImageBlock":
-            return {
-                type: "image",
-                attrs: parseImgBlock(attrs, options),
-            };
         case "image":
             // `role` decides which content array this lands in — the contract
             // published in docs/reference/content-structure.md ("Media Assets"):
@@ -234,27 +225,19 @@ function createSequenceElement(node, options = {}) {
             // poster/autoplay/muted/loop/controls, so the author's declaration
             // was demoted to an image AND its playback attrs were dropped —
             // while the build had already generated a poster for it
-            // (@uniweb/build site/assets.js). Note this does NOT route to
-            // parseVideoBlock: that reader speaks the editor's dialect
-            // (coverImg, info), not the markdown one.
+            // (@uniweb/build site/assets.js).
             if (attrs?.role === "video") {
                 return {
                     type: "video",
                     attrs: parseMarkdownVideo(attrs, options),
                 };
             }
-            // Standard ProseMirror image node - read through parseImgBlock, as
-            // ImageBlock is, so its address lands in `url`. CLI-deployed
-            // content uses this node type; without parseImgBlock the url
+            // Standard ProseMirror image node - read through parseImgBlock, so
+            // its address lands in `url`. Without parseImgBlock the url
             // wouldn't be populated and components render an empty slot.
             return {
                 type: "image",
                 attrs: parseImgBlock(attrs || {}, options),
-            };
-        case "Video":
-            return {
-                type: "video",
-                attrs: parseVideoBlock(attrs, options),
             };
         case "bulletList":
         case "orderedList": {
@@ -321,34 +304,11 @@ function createSequenceElement(node, options = {}) {
                 attrs,
             };
 
-        // Custom TipTap elements
-        case "card-group":
-            return {
-                type: "card-group",
-                cards:
-                    node.content
-                        ?.filter((c) => c.type === "card" && !c.attrs?.hidden)
-                        .map((card) => parseCardBlock(card.attrs)) || [],
-            };
-
-        case "document-group":
-            // The editor's older container: one `document` element per document
-            // it holds, so a document is one kind of content whichever node
-            // wrote it (`documentFromEditorNode`). Until 2026-09-29 this was a
-            // `document-group` element whose documents became `content.links`.
-            return (node.content || [])
-                .filter((c) => c.type === "document")
-                .map((doc) => ({
-                    type: "document",
-                    attrs: documentFromEditorNode(doc.attrs),
-                }));
-
-        // The editor renamed this node to `StructuredContent` (2026-07-31,
-        // editor-internal). Both are accepted: the new name is what the editor
-        // emits now, and the old one still arrives from documents authored
-        // before the rename, which the framework never rewrites.
+        // The editor's form node. ⛔ Until 2026-10-18 its name before
+        // 2026-07-31, `FormBlock`, was read too — and the editor's `card-group`,
+        // `document-group`, `ImageBlock`, `Video`, `UniwebIcon`, `Icon` and
+        // `button` nodes, which no writer produces now.
         case "StructuredContent":
-        case "FormBlock":
             // Parse form data (can be JSON string or object)
             let formData = attrs?.data;
             if (typeof formData === "string") {
@@ -364,29 +324,6 @@ function createSequenceElement(node, options = {}) {
                 schemaId: attrs?.activeSchemaId || null,
                 data: formData,
                 attrs,
-            };
-
-        case "button": {
-            let textContent = getTextContent(content, options);
-
-            if (!textContent) return null;
-
-            return {
-                type: "button",
-                text: textContent,
-                children: processInlineElements(content, options),
-                attrs,
-            };
-        }
-        case "UniwebIcon":
-            return {
-                type: "icon",
-                attrs: parseUniwebIcon(attrs),
-            };
-        case "Icon":
-            return {
-                type: "icon",
-                attrs: parseIconBlock(attrs),
             };
 
         default:
@@ -653,9 +590,9 @@ function processInlineElements(content, options = {}) {
         if (isIconNode(item)) {
             items.push({
                 type: "icon",
-                attrs: parseUniwebIcon(item.attrs),
+                attrs: parseIcon(item.attrs),
             });
-        } else if (item.type === "image" || item.type === "ImageBlock") {
+        } else if (item.type === "image") {
             // A media node that stayed inside its paragraph — content-reader
             // hoists a standalone one to the document root, but an image sitting
             // beside text does not qualify (parser/block.js `isBlockEligible`).
@@ -715,6 +652,11 @@ function processInlineElements(content, options = {}) {
  * layout, so a framework package never composes a serve location or guesses an
  * origin — a host may move its assets without a framework release.
  *
+ * ⛔ No asset host is built into this package: a reference resolves through this
+ * pattern, or is the address the content holds. Until 2026-10-17 an
+ * `info.identifier` (`{version}/{filename}`) was composed against a fixed host;
+ * it is not read.
+ *
  * ⛔ Three ways this returns '' — "unresolved", never a guess:
  *   - **no pattern** (the host declared none) — absent ⇒ absent
  *   - **an unknown placeholder** — never emit a half-substituted URL
@@ -750,8 +692,9 @@ function processInlineElements(content, options = {}) {
  * the one every fallback path already resolves to. The convention is: unprefixed
  * identifies the primary; a prefix names the attr it belongs to.
  *
- * `url` rides in the primary slot because the editor's `ImageBlock` uses it where
- * markdown's `image` uses `src`; both mean the same reference.
+ * `url` rides in the primary slot because the editor's `ImageBlock` used it where
+ * `image` uses `src`. This parser reads `src` alone since 2026-10-18; the entry
+ * stays because this list is exported and read outside it.
  */
 export const ASSET_SLOTS = [
     { urls: ["src", "url"], id: "assetId", ext: "assetExt" },
@@ -789,44 +732,6 @@ function secondaryAssetUrl(attrs, options, urlAttr) {
     const slot = slotFor(urlAttr);
     const resolved = slot ? assetUrlFromAttrs(attrs, options, slot) : "";
     return resolved || attrs?.[urlAttr] || "";
-}
-
-/**
- * The address an editor's media object holds — its `src`, else its `url` (a
- * `coverImg`, a node's `info`).
- *
- * ⛔ No asset host is built into this package. A reference resolves through the
- * pattern the host declares (`assetUrlFromAttrs` above) or is the address the
- * content holds; nothing else turns one into a URL. Until 2026-10-17 an
- * `info.identifier` (`{version}/{filename}`) was composed here against a fixed
- * host; it is not read.
- */
-function storedUrl(ref) {
-    return ref?.src || ref?.url || "";
-}
-
-function parseCardBlock(itemAttrs) {
-    const { address, ...others } = itemAttrs;
-
-    let parsedAddress = null;
-
-    try {
-        if (address) {
-            parsedAddress = JSON.parse(address);
-        }
-    } catch {}
-
-    const { coverImg = null, icon } = others;
-
-    if (icon) {
-        others.icon = parseUniwebIcon(icon);
-    }
-
-    return {
-        ...others,
-        address: parsedAddress,
-        coverImg: storedUrl(coverImg),
-    };
 }
 
 // A document authored in markdown: `![Annual report](./report.pdf){role=pdf …}`.
@@ -872,138 +777,47 @@ function fileFacts(url, attrs = {}) {
     };
 }
 
-// The editor's older `document` node — its `title`, `coverImg` and `src` —
-// read into the same shape a markdown document has.
-function documentFromEditorNode(itemAttrs) {
-    const {
-        href,
-        title = "",
-        alt = "",
-        coverImg,
-        author,
-        description,
-        fileType,
-    } = parseDocumentBlock(itemAttrs || {});
-    const url = href || "";
-    return {
-        url,
-        ...fileFacts(url, itemAttrs),
-        alt: alt || title,
-        caption: title,
-        role: "pdf",
-        ...(coverImg && { preview: coverImg }),
-        ...(author && { author }),
-        ...(description && { description }),
-        ...(fileType && { fileType }),
-    };
-}
+/**
+ * An icon: named (`library` + `name`, resolved at render through the icon
+ * corpus) or a file (`src`) — `![Logo](icon:./logo.svg)` or
+ * `![Logo](./logo.svg){role=icon}`, both documented in AGENTS.md and
+ * docs/reference/content-structure.md. Until 2026-07-30 a file-sourced icon
+ * delivered `{}` and rendered nothing. `url` is the key kit's <Icon> fetches
+ * from. Keys are omitted when absent.
+ *
+ * ⛔ Until 2026-10-18 this also read the editor's `UniwebIcon` (an inline `svg`,
+ * a `url`, `preserveColors`, a `family:id` name) and its `Icon` node.
+ */
+function parseIcon(itemAttrs) {
+    const { src, size, color, href, target, library, name } = itemAttrs || {};
 
-function parseDocumentBlock(itemAttrs) {
-    // `info` is the editor's envelope: kept out of the element, and not read.
-    const { src, info, coverImg = null, ...others } = itemAttrs;
-
-    let ele = {
-        ...others,
-        coverImg: storedUrl(coverImg),
-    };
-
-    if (src) ele.href = src;
-
-    return ele;
-}
-
-function parseUniwebIcon(itemAttrs) {
-    const { svg, url, src, size, color, preserveColors, href, target, library, name } = itemAttrs || {};
-
-    // Build object with only defined fields — icon source varies:
-    // TipTap editor: svg/url (resolved inline)
-    // Markdown pipeline: library + name (resolved at runtime via CDN)
-    //                    OR a file, which arrives as `src`
     const icon = {};
-    // Markup from content, so rebuilt from the SVG allowlist (`../sanitize.js`).
-    if (svg) icon.svg = sanitizeSVG(svg);
-    // Standard ProseMirror `image` nodes use `src`; the editor's `UniwebIcon`
-    // uses `url`. Honor either, exactly as parseImgBlock does below — a
-    // file-sourced icon is authored `![Logo](icon:./logo.svg)` or
-    // `![Logo](./logo.svg){role=icon}` (both documented in AGENTS.md and
-    // docs/reference/content-structure.md), and reaches here as `src` with no
-    // library/name. Until 2026-07-30 this reader dropped it, so every
-    // documented file-sourced icon delivered `{}` and rendered nothing.
-    // `url` is the key kit's <Icon> fetches from.
-    if (url || src) icon.url = url || src;
+    if (src) icon.url = src;
     if (size) icon.size = size;
     if (color) icon.color = color;
-    if (preserveColors) icon.preserveColors = preserveColors;
     if (href) icon.href = href;
     if (target) icon.target = target;
-    // The editor carries the family inside `name` as `family:id`; the markdown
-    // pipeline carries them separately. Normalize to the separate form, which
-    // is what `<Icon library name />` consumes.
-    let resolvedLibrary = library;
-    let resolvedName = name;
-    if (!resolvedLibrary && typeof name === "string" && name.includes(":")) {
-        const [family, ...rest] = name.split(":");
-        resolvedLibrary = family;
-        resolvedName = rest.join(":");
-    }
-    if (resolvedLibrary) icon.library = resolvedLibrary;
-    if (resolvedName) icon.name = resolvedName;
-
-    return icon;
-}
-
-// The editor's `Icon` node carries an inline SVG blob plus a theme. Return an
-// ATTRS OBJECT, like every other parser in this file — not the bare `svg`
-// string it used to return.
-//
-// The string form was a live bug, not just an inconsistency: kit renders a
-// sequence icon with `<Icon {...element.attrs} />` (styled/Prose/index.jsx),
-// and spreading a string yields indexed character props — `{0:'<', 1:'s', …}`
-// — so the icon rendered as nothing and React saw a wall of unknown props. It
-// failed silently because `attrs.svg` on a string is `undefined`, never an
-// error.
-//
-// Keys are omitted when absent so a consumer can distinguish "not provided"
-// from "empty", matching parseUniwebIcon's shape above.
-function parseIconBlock(itemAttrs) {
-    const { svg, theme } = itemAttrs || {};
-
-    const icon = {};
-    if (svg) icon.svg = sanitizeSVG(svg);
-    if (theme) icon.theme = theme;
+    if (library) icon.library = library;
+    if (name) icon.name = name;
 
     return icon;
 }
 
 function parseImgBlock(itemAttrs, options) {
     let {
-        info: imgInfo,
-        targetId,
         caption = "",
         alt = "",
         src,
-        url,
         href = "",
         target = "",
         role,
-        credit, // the editor's word for `author` — delivered as `author`
         id, // {#fig-id} cross-reference label — preserved so Press
             // adapters can emit \label{id} (LaTeX) / <id> (Typst).
-        // ── Markdown-authored attributes ────────────────────────────────
-        // This function was written for the EDITOR's `ImageBlock` node and
-        // later reused for the markdown `image` node (see `case "image"`), so
-        // its vocabulary was the editor's. Everything markdown declares and
-        // the editor does not was therefore tokenized, declared, and then
-        // dropped one layer before delivery — the published "Image
-        // Attributes" table (docs/reference/content-structure.md) reached no
-        // component, and neither did the `role=pdf` set added 2026-07-29 for
-        // the editor's `document` fold-in. Carried 2026-07-30.
-        //
-        // ⭐ An element now holds the vocabulary's words, whichever node it
-        // came from. ⛔ Until 2026-10-15 it also held the editor's `direction`
-        // and two things derived from it — `imgPos` (left/right) and a
-        // layout `size` (basic/lg/full, `basic` for every image without one) —
-        // plus `filter` and `theme`, none of which a stored document holds. A
+        // ⭐ An element holds the vocabulary's words. ⛔ This function was
+        // written for the editor's `ImageBlock` and read its words too — `url`,
+        // `credit`, an `info` envelope (`contentType`, `viewType`, `contentId`)
+        // and `targetId` — until 2026-10-18; and until 2026-10-15 its
+        // `direction`, `imgPos`, a layout `size`, `filter` and `theme`. A
         // component handing the element to kit's <Image> passed that `size` as
         // Image's avatar preset, so a "wide" image drew as a 96px square.
         width,
@@ -1017,32 +831,17 @@ function parseImgBlock(itemAttrs, options) {
         description, // role=pdf — describes the RESOURCE, not the image (≠ alt)
     } = itemAttrs;
 
-    let { contentType, viewType, contentId } = imgInfo || {};
-
     caption = stripTags(caption);
-    const attribution = author || credit;
 
-    // Reference precedence. Standard ProseMirror `image` nodes use `src`; the
-    // custom `ImageBlock` node uses `url`. Honor either so callers don't have to
-    // pre-normalize.
-    //
     // ⭐ A store-held asset (`assetId`) wins WHEN IT RESOLVES — not merely when
     // it is present. That distinction is the whole reason a producer can write
     // `assetId` alongside `src` before any deployment declares
     // `config.assets.url`: until one does, resolution yields '' and the node
     // renders through `src` exactly as it does today. Content written now stays
     // correct whichever order the halves arrive in.
-    const assetUrl = assetUrlFromAttrs(itemAttrs, options);
-    if (assetUrl) {
-        url = assetUrl;
-    } else if (!url && src) {
-        url = src;
-    }
+    const url = assetUrlFromAttrs(itemAttrs, options) || src || undefined;
 
     return {
-        contentType,
-        viewType,
-        contentId: targetId || contentId,
         url,
         alt: alt || caption,
         caption,
@@ -1062,24 +861,21 @@ function parseImgBlock(itemAttrs, options) {
             const p = secondaryAssetUrl(itemAttrs, options, "preview");
             return p ? { preview: p } : {};
         })()),
-        ...(attribution && { author: attribution }),
+        ...(author && { author }),
         ...(description && { description }),
     };
 }
 
 // A video authored in markdown: `![alt](./demo.mp4){role=video …}`.
 //
-// Distinct from parseVideoBlock below, which reads the EDITOR's `Video` node
-// (`coverImg`, `info`). The two surfaces name the same concepts differently and
-// collapsing them would drop one side's spelling; this reader carries the
-// attribute set that docs/reference/content-structure.md publishes for the
-// video role, and the shape it documents: `{ src, href, target }` plus the
-// playback flags.
+// This reader carries the attribute set that docs/reference/content-structure.md
+// publishes for the video role, and the shape it documents: `{ src, href,
+// target }` plus the playback flags. ⛔ Until 2026-10-18 the editor's `Video`
+// node had a reader of its own, `parseVideoBlock`, and this one took the
+// editor's `url` and `info` too.
 function parseMarkdownVideo(itemAttrs, options) {
     const {
         src,
-        url,
-        info,
         poster,
         alt = "",
         caption = "",
@@ -1098,7 +894,7 @@ function parseMarkdownVideo(itemAttrs, options) {
     // then the address the node holds.
     const assetUrl = assetUrlFromAttrs(itemAttrs, options);
     const video = {
-        src: assetUrl || storedUrl(info) || url || src || "",
+        src: assetUrl || src || "",
         alt,
         caption: stripTags(caption),
         role,
@@ -1121,33 +917,6 @@ function parseMarkdownVideo(itemAttrs, options) {
     if (placement) video.placement = placement;
 
     return video;
-}
-
-function parseVideoBlock(itemAttrs, options) {
-    let {
-        src,
-        caption = "",
-        info = {},
-        coverImg = {},
-        alt,
-        href = "",
-        target = "",
-        placement, // where it sits in a flow; the editor's `direction` is not read
-    } = itemAttrs;
-
-    // Same precedence as parseImgBlock / parseMarkdownVideo: a resolvable
-    // store-held asset, then the address the node holds.
-    const video = assetUrlFromAttrs(itemAttrs, options) || storedUrl(info) || src || "";
-
-    return {
-        src: video,
-        caption,
-        coverImg: storedUrl(coverImg),
-        alt,
-        href,
-        target,
-        ...(placement && { placement }),
-    };
 }
 
 function stripTags(htmlString) {
@@ -1211,7 +980,7 @@ function isLink(item, options = {}) {
 
                 for (let i = 0; i < originalContent.length; i++) {
                     if (isIconNode(originalContent[i])) {
-                        const iconAttrs = parseUniwebIcon(originalContent[i].attrs);
+                        const iconAttrs = parseIcon(originalContent[i].attrs);
                         if (i < linkIndex) {
                             // Take the last icon before the link
                             iconBefore = iconAttrs;

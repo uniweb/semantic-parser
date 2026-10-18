@@ -417,20 +417,6 @@ function processGroupContent(elements, options = {}) {
                     body.icons.push(element.attrs);
                     break;
 
-                case "button":
-                    // Map button to link with role
-                    body.links.push({
-                        href: element.attrs?.href || '',
-                        label: element.text || '',
-                        role: element.attrs?.variant ? `button-${element.attrs.variant}` : 'button',
-                        variant: element.attrs?.variant || 'primary',
-                        size: element.attrs?.size,
-                        icon: element.attrs?.icon,
-                        target: element.attrs?.target,
-                        class: element.attrs?.class,
-                    });
-                    break;
-
                 case "blockquote":
                     // Process blockquote content recursively
                     const quoteContent = processGroupContent(element.children);
@@ -515,7 +501,7 @@ function processGroupContent(elements, options = {}) {
                     break;
 
                 case "form":
-                    // Route FormBlock data by the schema id it targets, so it
+                    // Route a form's data by the schema id it targets, so it
                     // shares a namespace with tagged markdown data blocks
                     // (```yaml:<id>``` also lands at data[<id>]). When no
                     // schemaId is present (legacy content), fall back to the
@@ -525,18 +511,6 @@ function processGroupContent(elements, options = {}) {
                         const key = element.schemaId || "form";
                         body.data[key] = payload;
                     }
-                    break;
-
-                case "card-group":
-                    // Map cards to data by type: data.person = [...], data.event = [...]
-                    // Each card type becomes a key, with an array of cards of that type
-                    (element.cards || []).forEach(card => {
-                        const cardType = card.cardType || 'card';
-                        if (!body.data[cardType]) body.data[cardType] = [];
-                        // Remove cardType from the card object since it's now the key
-                        const { cardType: _, ...cardData } = card;
-                        body.data[cardType].push(cardData);
-                    });
                     break;
 
             }

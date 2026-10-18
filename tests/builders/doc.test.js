@@ -414,13 +414,13 @@ describe('accepts the parser\'s vocabulary as well as its own', () => {
     expect(parsed.videos[0].placement).toBe('full')
   })
 
-  test("a video's cover is its poster — from `poster`, or an editor's `coverImg` string or object", () => {
-    // A component reads `poster`, the parsed field. `coverImg` is an editor's
-    // spelling, whose object form holds the address in `src` or `url`.
-    for (const cover of [{ poster: '/p.jpg' }, { coverImg: '/p.jpg' }, { coverImg: { src: '/p.jpg' } }, { coverImg: { url: '/p.jpg' } }]) {
-      const parsed = parseContent(buildDoc({ videos: [{ src: '/v.mp4', ...cover }] }))
-      expect(parsed.videos[0].poster).toBe('/p.jpg')
-    }
+  test("a video's cover is its poster — the editor's `coverImg` is not taken", () => {
+    // A component reads `poster`, the parsed field. ⛔ Until 2026-10-18 an
+    // editor's `coverImg` was taken too.
+    const parsed = parseContent(buildDoc({ videos: [{ src: '/v.mp4', poster: '/p.jpg' }] }))
+    expect(parsed.videos[0].poster).toBe('/p.jpg')
+    const built = buildDoc({ videos: [{ src: '/v.mp4', coverImg: '/p.jpg' }] })
+    expect(built.content[0].attrs).not.toHaveProperty('poster')
   })
 
   test('a video is an image with role video, and keeps its playback flags', () => {

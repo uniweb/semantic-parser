@@ -165,11 +165,16 @@ describe("markup a node carries", () => {
         );
     });
 
-    test("an icon's SVG is rebuilt from the SVG allowlist", () => {
-        const [el] = processSequence({
+    test("an icon delivers no markup — an `svg` its node holds is not read", () => {
+        // An icon is named or a file. ⛔ Until 2026-10-18 the editor's icon
+        // nodes carried inline SVG, rebuilt here from the SVG allowlist.
+        const [para] = processSequence({
             type: "doc",
-            content: [{ type: "Icon", attrs: { svg: '<svg onload="alert(1)"><script>x</script><path d="M0 0"/></svg>' } }],
+            content: [{
+                type: "paragraph",
+                content: [{ type: "image", attrs: { role: "icon", library: "lu", name: "x", svg: '<svg onload="alert(1)"></svg>' } }],
+            }],
         });
-        expect(el.attrs.svg).toBe('<svg><path d="M0 0"/></svg>');
+        expect(para.children[0].attrs).toEqual({ library: "lu", name: "x" });
     });
 });

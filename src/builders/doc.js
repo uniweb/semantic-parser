@@ -23,8 +23,9 @@
  * This builder was written with its own spelling for several concepts, and
  * `parseContent` emits a DIFFERENT one for the same thing: a link's text is
  * `text` here and `label` there; an image's address is `src` here and `url`
- * there; a video's cover is a string here and `{ src | url | identifier }`
  * there; a list item is a plain string here and a whole content GROUP there.
+ * (A video's cover was a fourth — an editor's `coverImg` — until the parser
+ * stopped reading the editor's `Video`, 2026-10-18; both sides say `poster`.)
  *
  * ⛔ EVERY ONE OF THOSE MISMATCHES FAILED SILENTLY, which is why the rule is
  * now written down. Measured 2026-09-16, all four on the shapes a caller would
@@ -180,16 +181,13 @@ function iconNode({ src, url, library, name, size, color }) {
 const PLAYBACK_FLAGS = ['autoplay', 'muted', 'loop', 'controls']
 
 function videoNode(video) {
-  const { src, url, alt, caption, placement, poster, coverImg } = video
+  const { src, url, alt, caption, placement, poster } = video
   const attrs = { src: src || url, role: 'video' }
   if (alt) attrs.alt = alt
   if (caption) attrs.caption = caption
   // The cover is `poster`, what the parser emits for a video and what a
-  // component reads. `coverImg` is an editor's spelling — a string, or an
-  // object whose `src` or `url` is the address; an `identifier` alone names
-  // no address, so it gives none.
-  const cover = poster || (typeof coverImg === 'string' ? coverImg : coverImg?.src || coverImg?.url)
-  if (cover) attrs.poster = cover
+  // component reads. ⛔ Until 2026-10-18 an editor's `coverImg` was taken too.
+  if (poster) attrs.poster = poster
   if (placement) attrs.placement = placement
   for (const flag of PLAYBACK_FLAGS) if (typeof video[flag] === 'boolean') attrs[flag] = video[flag]
   return { type: 'image', attrs }

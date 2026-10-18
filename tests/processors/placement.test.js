@@ -20,24 +20,19 @@ describe("an image element", () => {
   });
 
   test("holds no layout of the parser's own, whatever the node holds", () => {
-    // The editor's own node, with every word it writes for layout and look.
+    // A node holding the editor's words for layout and look.
     const el = first({
-      type: "ImageBlock",
-      attrs: { url: "/h.jpg", direction: "wide", filter: { grayscale: 100 }, theme: "dark", credit: "Jane Doe" },
+      type: "image",
+      attrs: { src: "/h.jpg", direction: "wide", filter: { grayscale: 100 }, theme: "dark", credit: "Jane Doe" },
     });
     for (const key of ["direction", "imgPos", "size", "filter", "theme", "credit"]) {
       expect(el.attrs).not.toHaveProperty(key);
     }
   });
 
-  test("the editor's credit arrives as author — one key for the attribution", () => {
-    const el = first({ type: "ImageBlock", attrs: { url: "/h.jpg", credit: "Jane Doe" } });
-    expect(el.attrs.author).toBe("Jane Doe");
-  });
-
-  test("an author written in markdown wins over a credit", () => {
-    const el = first({ type: "image", attrs: { src: "/h.jpg", author: "Ada", credit: "Jane" } });
-    expect(el.attrs.author).toBe("Ada");
+  test("the attribution is `author` — the editor's `credit` is not read", () => {
+    expect(first({ type: "image", attrs: { src: "/h.jpg", author: "Ada", credit: "Jane" } }).attrs.author).toBe("Ada");
+    expect(first({ type: "image", attrs: { src: "/h.jpg", credit: "Jane" } }).attrs).not.toHaveProperty("author");
   });
 });
 
@@ -48,8 +43,8 @@ describe("a video element", () => {
     expect(el.attrs.placement).toBe("full");
   });
 
-  test("from the editor's node, carries a placement and no direction", () => {
-    const el = first({ type: "Video", attrs: { src: "/t.mp4", direction: "fill", placement: "left" } });
+  test("holding the editor's `direction`, carries its placement and no direction", () => {
+    const el = first({ type: "image", attrs: { src: "/t.mp4", role: "video", direction: "fill", placement: "left" } });
     expect(el.attrs.placement).toBe("left");
     expect(el.attrs).not.toHaveProperty("direction");
   });

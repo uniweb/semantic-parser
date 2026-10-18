@@ -72,26 +72,6 @@ describe('a document is delivered in content.documents', () => {
   })
 })
 
-describe("the editor's older document-group", () => {
-  test('its documents are documents — the same shape — not links', () => {
-    const c = parseContent(
-      doc({
-        type: 'document-group',
-        content: [
-          { type: 'document', attrs: { src: '/files/a.pdf', title: 'Handbook', coverImg: null } },
-          { type: 'document', attrs: { src: '/files/b.pdf', title: 'Forms', author: 'HR' } },
-        ],
-      })
-    )
-    expect(c.documents).toEqual([
-      { url: '/files/a.pdf', name: 'a.pdf', mime: 'application/pdf', alt: 'Handbook', caption: 'Handbook', role: 'pdf' },
-      { url: '/files/b.pdf', name: 'b.pdf', mime: 'application/pdf', alt: 'Forms', caption: 'Forms', role: 'pdf', author: 'HR' },
-    ])
-    expect(c.links).toEqual([])
-    expect(c.sequence.map((e) => e.type)).toEqual(['document', 'document'])
-  })
-})
-
 describe('buildDoc writes a document back as the stored node', () => {
   test('parseContent(buildDoc(x)) keeps it', () => {
     const built = buildDoc({

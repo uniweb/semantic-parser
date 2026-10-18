@@ -1,4 +1,5 @@
 import { processSequence } from "../../src/processors/sequence.js";
+import { parseContent } from "../../src/index.js";
 
 describe("processSequence", () => {
   test("processes basic document structure", () => {
@@ -159,8 +160,8 @@ describe("processSequence", () => {
             type: "paragraph",
             content: [
               {
-                type: "UniwebIcon",
-                attrs: { svg: "<svg>home</svg>", size: 16 },
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "home", size: 16 },
               },
               {
                 type: "text",
@@ -176,7 +177,7 @@ describe("processSequence", () => {
       expect(result[0].type).toBe("link");
       expect(result[0].attrs.href).toBe("/");
       expect(result[0].attrs.label).toBe("Home");
-      expect(result[0].attrs.iconBefore).toMatchObject({ svg: "<svg>home</svg>", size: 16 });
+      expect(result[0].attrs.iconBefore).toMatchObject({ library: "lu", name: "home", size: 16 });
       expect(result[0].attrs.iconAfter).toBeNull();
       // Children also available for advanced rendering
       expect(result[0].attrs.children.some(c => c.type === "icon")).toBe(true);
@@ -196,8 +197,8 @@ describe("processSequence", () => {
                 marks: [{ type: "link", attrs: { href: "https://example.com" } }],
               },
               {
-                type: "UniwebIcon",
-                attrs: { svg: "<svg>external</svg>" },
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "external-link" },
               },
             ],
           },
@@ -207,7 +208,7 @@ describe("processSequence", () => {
       const result = processSequence(doc);
       expect(result[0].type).toBe("link");
       expect(result[0].attrs.iconBefore).toBeNull();
-      expect(result[0].attrs.iconAfter).toMatchObject({ svg: "<svg>external</svg>" });
+      expect(result[0].attrs.iconAfter).toMatchObject({ library: "lu", name: "external-link" });
     });
 
     test("single link with icons before and after", () => {
@@ -219,8 +220,8 @@ describe("processSequence", () => {
             type: "paragraph",
             content: [
               {
-                type: "UniwebIcon",
-                attrs: { svg: "<svg>star</svg>" },
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "star" },
               },
               {
                 type: "text",
@@ -228,8 +229,8 @@ describe("processSequence", () => {
                 marks: [{ type: "link", attrs: { href: "/featured" } }],
               },
               {
-                type: "UniwebIcon",
-                attrs: { svg: "<svg>arrow</svg>" },
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "arrow-right" },
               },
             ],
           },
@@ -238,12 +239,12 @@ describe("processSequence", () => {
 
       const result = processSequence(doc);
       expect(result[0].type).toBe("link");
-      expect(result[0].attrs.iconBefore).toMatchObject({ svg: "<svg>star</svg>" });
-      expect(result[0].attrs.iconAfter).toMatchObject({ svg: "<svg>arrow</svg>" });
+      expect(result[0].attrs.iconBefore).toMatchObject({ library: "lu", name: "star" });
+      expect(result[0].attrs.iconAfter).toMatchObject({ library: "lu", name: "arrow-right" });
     });
 
     test("single link with markdown icon before (image with role=icon)", () => {
-      // Markdown pipeline produces type:"image" with role:"icon" instead of UniwebIcon
+      // The markdown pipeline produces type:"image" with role:"icon"
       // e.g., ![](lu-arrowRight) [Get Started](/signup)
       const doc = {
         type: "doc",
@@ -349,8 +350,8 @@ describe("processSequence", () => {
             type: "paragraph",
             content: [
               {
-                type: "UniwebIcon",
-                attrs: { svg: "<svg>home</svg>" },
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "home" },
               },
               {
                 type: "text",
@@ -358,8 +359,8 @@ describe("processSequence", () => {
                 marks: [{ type: "link", attrs: { href: "/" } }],
               },
               {
-                type: "UniwebIcon",
-                attrs: { svg: "<svg>about</svg>" },
+                type: "image",
+                attrs: { role: "icon", library: "lu", name: "info" },
               },
               {
                 type: "text",
@@ -382,45 +383,32 @@ describe("processSequence", () => {
   });
 
   describe("clickable icons", () => {
+    // An icon stays inside its paragraph, even alone on its line, so it arrives
+    // as the paragraph's child.
+    const iconOf = (attrs) =>
+      processSequence({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "image", attrs: { role: "icon", ...attrs } }] }],
+      })[0].children.find((c) => c.type === "icon");
+
     test("icon with href becomes clickable icon", () => {
       // Icons can have href/target for icon-only links (e.g., social media buttons)
-      const doc = {
-        type: "doc",
-        content: [
-          {
-            type: "UniwebIcon",
-            attrs: {
-              svg: "<svg>twitter</svg>",
-              href: "https://twitter.com/example",
-              target: "_blank",
-            },
-          },
-        ],
-      };
-
-      const result = processSequence(doc);
-      expect(result[0].type).toBe("icon");
-      expect(result[0].attrs.svg).toBe("<svg>twitter</svg>");
-      expect(result[0].attrs.href).toBe("https://twitter.com/example");
-      expect(result[0].attrs.target).toBe("_blank");
+      const icon = iconOf({
+        library: "lu",
+        name: "twitter",
+        href: "https://twitter.com/example",
+        target: "_blank",
+      });
+      expect(icon.attrs).toMatchObject({ library: "lu", name: "twitter" });
+      expect(icon.attrs.href).toBe("https://twitter.com/example");
+      expect(icon.attrs.target).toBe("_blank");
     });
 
     test("icon without href has no link attributes", () => {
-      const doc = {
-        type: "doc",
-        content: [
-          {
-            type: "UniwebIcon",
-            attrs: { svg: "<svg>decorative</svg>", size: 24 },
-          },
-        ],
-      };
-
-      const result = processSequence(doc);
-      expect(result[0].type).toBe("icon");
-      expect(result[0].attrs.svg).toBe("<svg>decorative</svg>");
-      expect(result[0].attrs.href).toBeUndefined();
-      expect(result[0].attrs.target).toBeUndefined();
+      const icon = iconOf({ library: "lu", name: "star", size: 24 });
+      expect(icon.attrs).toEqual({ library: "lu", name: "star", size: 24 });
+      expect(icon.attrs.href).toBeUndefined();
+      expect(icon.attrs.target).toBeUndefined();
     });
   });
 
@@ -610,13 +598,13 @@ describe("processSequence", () => {
     });
   });
 
-  describe("FormBlock", () => {
+  describe("StructuredContent — the editor's form node", () => {
     test("parses object data and carries schemaId", () => {
       const doc = {
         type: "doc",
         content: [
           {
-            type: "FormBlock",
+            type: "StructuredContent",
             attrs: {
               activeSchemaId: "stats",
               data: [{ number: "42", text: "Users" }],
@@ -637,7 +625,7 @@ describe("processSequence", () => {
         type: "doc",
         content: [
           {
-            type: "FormBlock",
+            type: "StructuredContent",
             attrs: {
               activeSchemaId: "side-content",
               data: '{"for":"scholar","department":"CS"}',
@@ -654,7 +642,7 @@ describe("processSequence", () => {
     test("emits schemaId=null when activeSchemaId missing", () => {
       const doc = {
         type: "doc",
-        content: [{ type: "FormBlock", attrs: { data: {} } }],
+        content: [{ type: "StructuredContent", attrs: { data: {} } }],
       };
       const result = processSequence(doc);
       expect(result[0].schemaId).toBeNull();
@@ -696,43 +684,31 @@ describe('inset_block — a component reference with block content', () => {
   })
 })
 
-describe("icon nodes carry an attrs OBJECT", () => {
-  // Regression: parseIconBlock used to return the bare `svg` string. kit renders
-  // a sequence icon with `<Icon {...element.attrs} />` (styled/Prose), and
-  // spreading a string yields indexed character props — {0:'<', 1:'s', …} — so
-  // the icon rendered as nothing, with no error, because `attrs.svg` on a string
-  // is undefined rather than a throw.
-  const iconEntry = (attrs) =>
-    processSequence({ type: "doc", content: [{ type: "Icon", attrs }] }).find(
-      (e) => e.type === "icon"
-    );
+describe("the editor's retired node types deliver nothing", () => {
+  // ⛔ Until 2026-10-18 the parser read the editor's own node types beside the
+  // vocabulary. No writer the parser serves produces them now — the editor saves
+  // the vocabulary — so each falls to the default branch and reaches no
+  // delivery array.
+  const RETIRED = [
+    { type: "ImageBlock", attrs: { url: "/a.png", src: "/a.png" } },
+    { type: "Video", attrs: { src: "/v.mp4", coverImg: { src: "/p.jpg" } } },
+    { type: "UniwebIcon", attrs: { name: "lu:house", svg: "<svg/>" } },
+    { type: "Icon", attrs: { svg: "<svg/>" } },
+    { type: "card-group", content: [{ type: "card", attrs: { cardType: "person", title: "Ada" } }] },
+    { type: "document-group", content: [{ type: "document", attrs: { src: "/r.pdf", title: "Report" } }] },
+    { type: "FormBlock", attrs: { activeSchemaId: "stats", data: { a: 1 } } },
+    { type: "button", attrs: { href: "/go" }, content: [{ type: "text", text: "Go" }] },
+  ];
 
-  test("an Icon node yields an object, never a string", () => {
-    const entry = iconEntry({ svg: "<svg id='x'/>", theme: "dark" });
-    expect(typeof entry.attrs).toBe("object");
-    // The markup is rebuilt from the SVG allowlist (src/sanitize.js), so its
-    // attribute comes back double-quoted.
-    expect(entry.attrs).toEqual({ svg: '<svg id="x"/>', theme: "dark" });
-  });
-
-  test("spreading the attrs gives named props, not characters", () => {
-    // This is the shape kit actually consumes.
-    const spread = { ...iconEntry({ svg: "<svg/>" }).attrs };
-    expect(spread).toEqual({ svg: "<svg/>" });
-    expect(spread[0]).toBeUndefined();
-  });
-
-  test("an Icon node with no svg yields an empty object, not undefined", () => {
-    expect(iconEntry({})).toEqual({ type: "icon", attrs: {} });
-  });
-
-  test("a UniwebIcon still resolves family:id into library + name", () => {
-    const entry = processSequence({
-      type: "doc",
-      content: [{ type: "UniwebIcon", attrs: { name: "lu:house" } }],
-    }).find((e) => e.type === "icon");
-    expect(entry.attrs).toEqual({ library: "lu", name: "house" });
-  });
+  for (const node of RETIRED) {
+    test(node.type, () => {
+      const parsed = parseContent({ type: "doc", content: [node] });
+      for (const key of ["images", "videos", "icons", "documents", "links"]) {
+        expect(parsed[key], key).toEqual([]);
+      }
+      expect(parsed.data).toEqual({});
+    });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -790,11 +766,10 @@ describe("media roles decide the delivery array", () => {
     ).toMatchObject({ href: "/demo", target: "_blank" });
   });
 
-  test("role=video does NOT go through parseVideoBlock's editor dialect", () => {
-    // parseVideoBlock reads `coverImg`/`info` — the editor's Video node. Routing
-    // markdown through it would drop poster and every playback flag.
-    expect(seq({ src: "/t.mp4", role: "video", poster: "/p.png" }).attrs.coverImg)
-      .toBeUndefined();
+  test("a video's cover is `poster`, never the editor's `coverImg`", () => {
+    const { attrs } = seq({ src: "/t.mp4", role: "video", poster: "/p.png" });
+    expect(attrs.poster).toBe("/p.png");
+    expect(attrs.coverImg).toBeUndefined();
   });
 
   test("a non-video role still becomes an image", () => {

@@ -137,37 +137,7 @@ describe('video precedence — aligned with image', () => {
   })
 })
 
-describe('every node shape the editor can emit resolves', () => {
-  // ⛔ The app lane does NOT emit framework-dialect `image`. An upload sets an
-  // editor-only attr (aspect_ratio), which promotes the node, so it stays
-  // `ImageBlock` — and videos stay `Video` for the same reason. A literal reading
-  // of "assetId on the image node" would leave every app-uploaded asset
-  // unresolvable. These pin the other shapes so a later cleanup cannot remove
-  // them as dead legacy tolerance. (Found from the consuming side by the app
-  // lane, reading the shipped resolver — not by this package's own tests.)
-
-  it('resolves on an editor ImageBlock node', () => {
-    const doc = {
-      type: 'doc',
-      content: [{ type: 'ImageBlock', attrs: { assetId: ID, assetExt: 'png' } }],
-    }
-    const el = parseContent(doc, { assets: { url: TEMPLATE } }).sequence.find(
-      (e) => e.type === 'image'
-    )
-    expect(el.attrs.url).toBe(`https://cdn.example/x/${ID}/base.png`)
-  })
-
-  it('resolves on an editor Video node', () => {
-    const doc = {
-      type: 'doc',
-      content: [{ type: 'Video', attrs: { assetId: ID, assetExt: 'mp4' } }],
-    }
-    const el = parseContent(doc, { assets: { url: TEMPLATE } }).sequence.find(
-      (e) => e.type === 'video'
-    )
-    expect(el.attrs.src).toBe(`https://cdn.example/x/${ID}/base.mp4`)
-  })
-
+describe('an image beside text resolves', () => {
   it('⭐ resolves an INLINE image — the path that shipped without options', () => {
     // `processInlineElements` took no options at all, so an image sitting beside
     // text in a paragraph reached `parseImgBlock` with none. It resolved for a
@@ -180,7 +150,7 @@ describe('every node shape the editor can emit resolves', () => {
           type: 'paragraph',
           content: [
             { type: 'text', text: 'see ' },
-            { type: 'ImageBlock', attrs: { assetId: ID, assetExt: 'png' } },
+            { type: 'image', attrs: { assetId: ID, assetExt: 'png' } },
           ],
         },
       ],
@@ -191,27 +161,8 @@ describe('every node shape the editor can emit resolves', () => {
     const img = para.children.find((c) => c.type === 'image')
     expect(img.attrs.url).toBe(`https://cdn.example/x/${ID}/base.png`)
   })
-
-  it('resolves an image inside a link', () => {
-    const doc = {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'x' },
-            { type: 'image', attrs: { assetId: ID, assetExt: 'png' } },
-          ],
-        },
-      ],
-    }
-    const para = parseContent(doc, { assets: { url: TEMPLATE } }).sequence.find(
-      (e) => e.type === 'paragraph'
-    )
-    expect(para.children.find((c) => c.type === 'image').attrs.url).toBe(
-      `https://cdn.example/x/${ID}/base.png`
-    )
-  })
+  // ⛔ Until 2026-10-18 this block also pinned the editor's `ImageBlock` and
+  // `Video` nodes, which the parser reads no longer.
 })
 
 describe('⛔ no asset host is built in', () => {
@@ -233,22 +184,17 @@ describe('⛔ no asset host is built in', () => {
   it('a video whose only reference is an identifier has no src', () => {
     const el = parseContent({
       type: 'doc',
-      content: [{ type: 'Video', attrs: { info: { identifier: 'v1/clip.mp4' } } }],
+      content: [{ type: 'image', attrs: { role: 'video', info: { identifier: 'v1/clip.mp4' } } }],
     }).sequence.find((e) => e.type === 'video')
     expect(el.attrs.src).toBe('')
   })
 
-  it("an editor document whose only reference is an identifier has no url", () => {
-    const [el] = parseContent({
+  it('a document whose only reference is an identifier has no url', () => {
+    const el = parseContent({
       type: 'doc',
-      content: [
-        {
-          type: 'document-group',
-          content: [{ type: 'document', attrs: { title: 'Report', info: { identifier: 'v1/report.pdf' } } }],
-        },
-      ],
-    }).sequence.filter((e) => e.type === 'document')
-    expect(el.attrs.url).toBe('')
+      content: [{ type: 'image', attrs: { role: 'pdf', info: { identifier: 'v1/report.pdf' } } }],
+    }).sequence.find((e) => e.type === 'document')
+    expect(el.attrs.url).toBeFalsy()
   })
 
   it('the image element carries no `value` — it held the identifier', () => {
