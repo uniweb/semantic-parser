@@ -186,6 +186,13 @@ describe("an image's address, and the image itself as data", () => {
         expect(isImageData("data:image/svg+xml;base64,not base64!")).toBe(false);
     });
 
+    test("SVG is an image only as a rebuild writes it", () => {
+        const quoted = "<svg viewBox='0 0 1 1'><rect width='1' height='1'/></svg>";
+        expect(isImageData(`data:image/svg+xml,${encodeURIComponent(quoted)}`)).toBe(false);
+        expect(isImageData(`data:image/svg+xml,${encodeURIComponent(sanitizeSVG(quoted))}`)).toBe(true);
+        expect(inspectSVG(quoted).map((o) => o.reason)).toEqual(["spelling"]);
+    });
+
     test("a raster image is one in base64; another media type is not", () => {
         expect(isImageData("data:image/png;base64,iVBORw0KGgo=")).toBe(true);
         expect(isImageData(" data:image/jpeg;base64,/9j/4AAQ ")).toBe(true);
@@ -217,8 +224,11 @@ describe("an image's address, and the image itself as data", () => {
 describe("inspectMathML — what a rebuild would leave out, reported", () => {
     const math = (inner) => `<math xmlns="http://www.w3.org/1998/Math/MathML">${inner}</math>`;
 
-    test.each(fixture.map((m, i) => [i, m]))("temml's fixture %i is within the allowlist", (_, mathml) => {
-        expect(inspectMathML(mathml)).toEqual([]);
+    // temml writes a quote as `&quot;` or `&#x27;`, which a rebuild writes as the character: a
+    // spelling, and the only thing between temml's output and the form content-reader stores.
+    test.each(fixture.map((m, i) => [i, m]))("temml's fixture %i is within the allowlist once rebuilt", (_, mathml) => {
+        expect(inspectMathML(mathml).filter((o) => o.reason !== "spelling")).toEqual([]);
+        expect(inspectMathML(sanitizeMathML(mathml))).toEqual([]);
     });
 
     test("each thing a rebuild drops is named", () => {
@@ -243,9 +253,24 @@ describe("inspectMathML — what a rebuild would leave out, reported", () => {
         ).toEqual([{ reason: "element", element: "annotation-xml" }]);
     });
 
-    test("text is within it, whatever it spells", () => {
-        expect(inspectMathML(math("<mo>&lt;</mo><mo><</mo><![CDATA[<b>]]>"))).toEqual([]);
+    test("markup is within it only as a rebuild writes it", () => {
+        expect(inspectMathML(math("<mo>&lt;</mo><mi>x</mi>"))).toEqual([]);
+        expect(inspectMathML(math('<mtext>say "hi"</mtext><mspace width="1em"/>'))).toEqual([]);
         expect(inspectMathML("")).toEqual([]);
+        // Each of these is a spelling a rebuild writes differently, reported at its first difference.
+        expect(inspectMathML(math("<mo><</mo>"))).toEqual([{ reason: "spelling", value: "<</mo></math>" }]);
+        expect(inspectMathML(math("<mi><![CDATA[x]]></mi>"))).toEqual([{ reason: "spelling", value: "<![CDATA[x]]></mi></math>" }]);
+        expect(inspectMathML(math("<mtext>&quot;hi&quot;</mtext>"))).toEqual([{ reason: "spelling", value: "&quot;hi&quot;</mtext></math>" }]);
+        expect(inspectMathML(math("<mi mathvariant='bold'>x</mi>")).map((o) => o.reason)).toEqual(["spelling"]);
+        expect(inspectMathML(math("<MI>x</MI>")).map((o) => o.reason)).toEqual(["spelling"]);
+        expect(inspectMathML(math('<mspace width="1em" />')).map((o) => o.reason)).toEqual(["spelling"]);
+        expect(inspectMathML(math("<mi>a &amp b</mi>")).map((o) => o.reason)).toEqual(["spelling"]);
+    });
+
+    test("what a rebuild writes is within it", () => {
+        for (const mathml of [...fixture, math("<mo><</mo>"), math("<mi MathVariant='bold'>x</mi>"), math("<mi><![CDATA[a<b]]></mi>")]) {
+            expect(inspectMathML(sanitizeMathML(mathml))).toEqual([]);
+        }
     });
 });
 

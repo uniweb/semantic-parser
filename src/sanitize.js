@@ -347,9 +347,16 @@ function rebuild(input, policy) {
 
 /**
  * What a rebuild would leave out of `input`, item by item — the same walk as
- * `rebuild`, reporting instead of writing. Empty when the markup is within the
- * policy, which is when a rebuild changes nothing but spelling (quotes,
- * escapes, a style's spacing).
+ * `rebuild`, reporting instead of writing — and, when it leaves nothing out but
+ * writes the markup differently, one `spelling` item at the first difference.
+ * Empty when a rebuild writes `input` back exactly as given.
+ *
+ * ⭐ Exactly, not "up to spelling" (since 2026-10-18): every text run and
+ * attribute value a rebuild writes is escaped, so markup in that form reads the
+ * same to any reader. Markup spelled otherwise — a `<` left in text, a CDATA
+ * section, a reference the rebuild would write as its character — can read one
+ * way here and another way to a reader that parses it as written, which a store
+ * holding it for every reader cannot allow.
  */
 function inspect(input, policy) {
     const outside = [];
@@ -394,6 +401,14 @@ function inspect(input, policy) {
             }
         }
     }
+    if (!outside.length) {
+        const rebuilt = rebuild(input, policy);
+        if (rebuilt !== input) {
+            let at = 0;
+            while (input[at] === rebuilt[at]) at++;
+            outside.push({ reason: "spelling", value: input.slice(at, at + 40) });
+        }
+    }
     return outside;
 }
 
@@ -412,14 +427,16 @@ export function sanitizeMathML(mathml) {
 /**
  * What in a MathML string falls outside the allowlist `sanitizeMathML` rebuilds
  * from: each element and attribute a rebuild drops, each style declaration it
- * drops, and any comment, doctype or processing instruction. Empty when the
- * markup is within it.
+ * drops, and any comment, doctype or processing instruction — or, when it drops
+ * nothing, a `spelling` item if the rebuild writes the markup differently. Empty
+ * when `sanitizeMathML` writes the markup back exactly as given, so a writer
+ * that stores what `sanitizeMathML` returns stores markup within it.
  *
  * This is how content is checked rather than cleaned — a writer refused with
  * what it sent can fix it, where a cleaned value changes without a word.
  *
  * @param {string} mathml
- * @returns {Array<{reason: 'element'|'attribute'|'style'|'markup', element?: string, attribute?: string, value?: string}>}
+ * @returns {Array<{reason: 'element'|'attribute'|'style'|'markup'|'spelling', element?: string, attribute?: string, value?: string}>}
  */
 export function inspectMathML(mathml) {
     if (typeof mathml !== "string" || !mathml) return [];
@@ -443,11 +460,11 @@ export function sanitizeSVG(svg) {
 
 /**
  * What in an SVG string falls outside the allowlist `sanitizeSVG` rebuilds
- * from, reported as `inspectMathML` reports MathML. Empty when the markup is
- * within it.
+ * from, reported as `inspectMathML` reports MathML. Empty when `sanitizeSVG`
+ * writes the markup back exactly as given.
  *
  * @param {string} svg
- * @returns {Array<{reason: 'element'|'attribute'|'style'|'markup', element?: string, attribute?: string, value?: string}>}
+ * @returns {Array<{reason: 'element'|'attribute'|'style'|'markup'|'spelling', element?: string, attribute?: string, value?: string}>}
  */
 export function inspectSVG(svg) {
     if (typeof svg !== "string" || !svg) return [];
@@ -480,8 +497,8 @@ export function isImageSource(url) {
 
 /**
  * Whether a `data:` URL holds an image a page may show: a PNG, JPEG, GIF, WebP
- * or AVIF in base64, or SVG — percent-encoded or base64 — whose markup is within
- * the allowlist `sanitizeSVG` rebuilds from. ⭐ Admitted [Diego, 2026-10-16]: a
+ * or AVIF in base64, or SVG — percent-encoded or base64 — whose markup is
+ * exactly what `sanitizeSVG` writes of it (`inspectSVG`). ⭐ Admitted [Diego, 2026-10-16]: a
  * picture an `<img>` loads runs no script, and a built-in starter image is one.
  * The URL is read as a browser reads it: tab and newline removed, leading and
  * trailing spaces and controls trimmed.
@@ -598,6 +615,14 @@ export function isCssColor(value) {
     return typeof value === "string" && CSS_COLOR.test(value) && !NOT_A_COLOR.test(value);
 }
 
+/** How a rebuild writes markup — what `inspect` compares the input with. */
+const WRITTEN =
+    "exactly as a rebuild writes it: a text run with `&`, `<` and `>` written `&amp;`, `&lt;` and `&gt;`, and every other character as itself; " +
+    "a start tag `<name>` or `<name/>` and an end tag `</name>`, the name as `elements` spells it, with no space before `>` or `/>`; " +
+    "each attribute once, as one space then `name=\"value\"` — the name as `attributes` spells it, or a common one in lower case — " +
+    "with `&`, `<`, `>` and `\"` in the value written `&amp;`, `&lt;`, `&gt;` and `&quot;`; " +
+    "a `style` value as its declarations, each `property:value;` with the property in lower case and the value trimmed";
+
 /**
  * The same rules, as data — for a reader that implements them in another
  * language, such as a backend checking content when it is written. Every list
@@ -632,7 +657,8 @@ export function allowlists() {
             unsafeValue: UNSAFE_VALUE.source,
             urlInAValue: "only url(#id), a reference within the document",
             style: "declaration by declaration: a property of letters and -, a value with none of \\ < > { } /* and no unsafe value",
-            markup: "no comment, doctype or processing instruction; CDATA is text",
+            markup: "no comment, doctype, processing instruction or CDATA section",
+            written: WRITTEN,
         },
         imageData: {
             raster: RASTER_DATA.source,
@@ -649,7 +675,8 @@ export function allowlists() {
                 unsafeValue: UNSAFE_VALUE.source,
                 urlInAValue: "only url(#id), a reference within the document",
                 style: "declaration by declaration: a property of letters and -, a value with none of \\ < > { } /* and no unsafe value",
-                markup: "no comment, doctype or processing instruction; CDATA is text",
+                markup: "no comment, doctype, processing instruction or CDATA section",
+                written: `${WRITTEN}; an \`href\` or \`xlink:href\` value trimmed`,
             },
         },
     };
