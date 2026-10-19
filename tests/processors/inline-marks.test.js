@@ -113,3 +113,64 @@ describe("whitespace", () => {
     expect(render([text("  padded  ")])).toBe("padded");
   });
 });
+
+describe("strike mark", () => {
+  // ⛔ Until 2026-10-19 nothing applied it: `~~gone~~` reached the page as
+  // "gone", with nothing for a stylesheet or a print adapter to tell apart.
+  test("emits an <s> element", () => {
+    expect(render([text("was "), text("gone", [{ type: "strike" }]), text(" now")])).toBe(
+      "was <s>gone</s> now",
+    );
+  });
+
+  test("wraps the other marks", () => {
+    expect(render([text("x", [{ type: "strike" }, { type: "bold" }])])).toBe("<s><strong>x</strong></s>");
+  });
+
+  test("CONTROL — text with no strike mark gets no <s>", () => {
+    expect(render([text("plain "), text("bold", [{ type: "bold" }])])).not.toContain("<s>");
+  });
+});
+
+describe("a link's role", () => {
+  // ⛔ Until 2026-10-19 the anchor dropped it, so a button — a link whose role
+  // is `button` (`[Go](/x){button}`) — reached the page as a plain link.
+  const button = (href) => ({ type: "button", attrs: { href } });
+
+  test("a button mark's anchor says it is a button", () => {
+    expect(render([text("then "), text("Sign up", [button("/join")]), text(" today.")])).toBe(
+      'then <a href="/join" target="_self" data-role="button">Sign up</a> today.',
+    );
+  });
+
+  test("an authored role rides the same way", () => {
+    expect(render([text("see "), text("docs", [link("/d", { role: "nav" })]), text(".")])).toContain(
+      '<a href="/d" target="_self" data-role="nav">docs</a>',
+    );
+  });
+
+  test("a role that is not a style name is left out, never written into the tag", () => {
+    const out = render([text("see "), text("x", [link("/d", { role: 'nav" onclick="alert(1)' })]), text(".")]);
+
+    expect(out).toBe('see <a href="/d" target="_self">x</a>.');
+  });
+
+  test("a heading whose every run is one button keeps the role", () => {
+    // `isStyledLink` — the block whose runs all carry the same link, drawn as one anchor.
+    const b = button("/go");
+    const heading = {
+      type: "doc",
+      content: [{ type: "heading", attrs: { level: 2 }, content: [text("Go", [b, { type: "bold" }]), text(" now", [b])] }],
+    };
+
+    expect(processSequence(heading)[0].text).toBe(
+      '<a href="/go" target="_self" data-role="button"><strong>Go</strong> now</a>',
+    );
+  });
+
+  test("CONTROL — a link with no role gets no data-role", () => {
+    expect(render([text("see "), text("docs", [link("/d")]), text(".")])).toBe(
+      'see <a href="/d" target="_self">docs</a>.',
+    );
+  });
+});

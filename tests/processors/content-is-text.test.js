@@ -84,8 +84,9 @@ describe("links", () => {
             attrs: { href: "/signup", label: "Get Started", role: "button", variant: "primary" },
         });
 
+        // Inline, it says so on the anchor (until 2026-10-19 it did not, and read as a plain link).
         expect(render([text("Click "), text("Go", [button("/x")]), text(" now.")])).toBe(
-            'Click <a href="/x" target="_self">Go</a> now.',
+            'Click <a href="/x" target="_self" data-role="button">Go</a> now.',
         );
 
         const [cta] = processSequence(doc([text("Go", [button("/x", { role: "cta" })])]));

@@ -375,21 +375,27 @@ function sameLink(a, b) {
  * Wrap already-styled inline content in an anchor.
  */
 function wrapLink(inner, linkMark) {
-    return anchor(linkMark.attrs.href, linkMark.attrs.target, inner);
+    return anchor(linkMark.attrs.href, linkMark.attrs.target, inner, linkMark.attrs.role);
 }
 
 /**
  * An anchor around already-escaped inner HTML. A link whose URL may not be
  * followed (`javascript:`, `data:`, any scheme `isSafeLink` refuses) is not
  * drawn as a link: its label stays, as text.
+ *
+ * Its `role` — `button` for a `[Go](/x){button}`, or an authored hint such as
+ * `nav` — rides as `data-role`, a style name or nothing, so a stylesheet can
+ * tell a button from a link. ⛔ Until 2026-10-19 the role was dropped here, and
+ * a button reached the page as a plain link.
  */
-function anchor(href, target, inner) {
+function anchor(href, target, inner, role) {
     if (typeof href !== "string" || !isSafeLink(href)) return inner;
     const t = isLinkTarget(target) ? target : "_self";
     const extension = href.split(".").pop()?.toLowerCase();
     const isFileLink = FILE_LINK_EXTENSIONS.includes(extension);
+    const roleAttr = isStyleName(role) ? ` data-role="${escapeAttr(role)}"` : "";
 
-    return `<a href="${escapeAttr(href)}" target="${t}"${isFileLink ? " download" : ""}>${inner}</a>`;
+    return `<a href="${escapeAttr(href)}" target="${t}"${isFileLink ? " download" : ""}${roleAttr}>${inner}</a>`;
 }
 
 function getTextContent(content, options = {}) {
@@ -453,8 +459,8 @@ function renderInlineNode(curr, iconOrdinals, pictureOrdinals) {
             if (type === "text") {
                 let styledText = escapeText(text || "");
 
-                // Apply marks in order: span, code, bold, italic — the link is
-                // applied per group by getTextContent. This ensures proper nesting.
+                // Apply marks in order: span, code, bold, italic, strike — the link
+                // is applied per group by getTextContent. This ensures proper nesting.
                 //
                 // ⛔ Until 2026-10-18 the editor's `textStyle` (a theme color) and
                 // `highlight` marks were applied first. The editor saves both as
@@ -511,6 +517,12 @@ function renderInlineNode(curr, iconOrdinals, pictureOrdinals) {
                 // italic
                 if (marks.some((mark) => mark.type === "italic")) {
                     styledText = `<em>${styledText}</em>`;
+                }
+
+                // strike — `~~text~~`. ⛔ Until 2026-10-19 nothing applied the
+                // mark, so struck text reached the page as ordinary text.
+                if (marks.some((mark) => mark.type === "strike")) {
+                    styledText = `<s>${styledText}</s>`;
                 }
 
                 // The link mark is deliberately NOT applied here — it is the
@@ -1085,7 +1097,7 @@ function isStyledLink(item, options = {}) {
     )
         return false;
 
-    const { href, target } = firstLinkMark.attrs;
+    const { href, target, role } = firstLinkMark.attrs;
 
     const cleanedContent = content.map((c) => {
         // remove link marks from content items
@@ -1104,7 +1116,7 @@ function isStyledLink(item, options = {}) {
     return {
         type: "paragraph",
         children: processInlineElements(item.content, options),
-        text: anchor(href, target, textContent),
+        text: anchor(href, target, textContent, role),
         attrs: item.attrs,
     };
 }
