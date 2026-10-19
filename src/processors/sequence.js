@@ -79,7 +79,7 @@ function createSequenceElement(node, options = {}) {
     }
 
     // Check for paragraph containing only multiple links (no other text)
-    const multipleLinks = isOnlyLinks(node);
+    const multipleLinks = isOnlyLinks(node, options);
     if (multipleLinks && multipleLinks.every((l) => isSafeLink(l.attrs?.href))) {
         return multipleLinks; // Returns array of link elements
     }
@@ -612,8 +612,20 @@ function processInlineElements(content, options = {}) {
     if (!content) return [];
 
     const items = [];
+    // The link the previous run belongs to, while the runs continue it: a label
+    // in several styles (`[the *full* guide](/guide)`) is one link, as its anchor
+    // is. ⛔ Until 2026-10-19 each run was a link here, so `content.links` held
+    // "the ", "full" and " guide".
+    let open = null;
 
     for (const item of content) {
+        const runLink = item.type === "text" ? linkMarkOf(item.marks) : null;
+        if (runLink && open && sameLink(open.mark, runLink)) {
+            open.link.attrs.label += item.text || "";
+            continue;
+        }
+        open = null;
+
         if (isIconNode(item)) {
             items.push({
                 type: "icon",
@@ -651,18 +663,17 @@ function processInlineElements(content, options = {}) {
                 refId: item.attrs?.refId,
                 embedKind: item.attrs?.embedKind || "visual",
             });
-        } else if (item.type === "text" && item.marks) {
+        } else if (runLink && isSafeLink(runLink.attrs?.href)) {
             // Extract links from text nodes with link marks
-            const linkMark = linkMarkOf(item.marks);
-            if (linkMark && isSafeLink(linkMark.attrs?.href)) {
-                items.push({
-                    type: "link",
-                    attrs: {
-                        ...linkMark.attrs,  // Preserve all link attributes (role, target, etc.)
-                        label: item.text || "",
-                    },
-                });
-            }
+            const link = {
+                type: "link",
+                attrs: {
+                    ...runLink.attrs,  // Preserve all link attributes (role, target, etc.)
+                    label: item.text || "",
+                },
+            };
+            items.push(link);
+            open = { mark: runLink, link };
         }
     }
 
@@ -1045,9 +1056,10 @@ function isLink(item, options = {}) {
  * Markdown treats these as a single paragraph, but semantically they're separate links.
  *
  * @param {Object} item - Sequence item (paragraph)
+ * @param {Object} [options] - Parse options, for the one-link case's `children`
  * @returns {Array|false} Array of link objects or false
  */
-function isOnlyLinks(item) {
+function isOnlyLinks(item, options = {}) {
     if (item.type !== "paragraph") return false;
 
     const content = item?.content || [];
@@ -1076,22 +1088,41 @@ function isOnlyLinks(item) {
     // break becomes, an icon — keeps them apart. ⛔ Until 2026-10-19 every run
     // was a link of its own, so a button labelled in two styles became two
     // buttons, "Go" and " now".
-    // Icons in this paragraph go to body.icons separately (no association)
     const groups = [];
     let current = null;
-    for (const c of content) {
+    content.forEach((c, i) => {
         const mark = c.type === "text" ? linkMarkOf(c.marks) : null;
         if (mark && current && sameLink(current.mark, mark)) {
             current.label += c.text || "";
+            current.last = i;
         } else if (mark) {
-            current = { mark, label: c.text || "" };
+            current = { mark, label: c.text || "", first: i, last: i };
             groups.push(current);
         } else {
             current = null;
         }
+    });
+
+    // One link in several runs is a paragraph that is just a link, and takes the
+    // shape `isLink` gives one — its icons, the last before it and the first
+    // after, and its inline elements. ⛔ Until 2026-10-19 its icons were dropped:
+    // `![](lu-star) [**Go** now](/go){button}` lost the star.
+    if (groups.length === 1) {
+        const [{ mark, label, first, last }] = groups;
+        const icons = content.map((c, i) => (isIconNode(c) ? { i, attrs: parseIcon(c.attrs) } : null)).filter(Boolean);
+        return [{
+            type: "link",
+            attrs: {
+                ...mark?.attrs,
+                label,
+                iconBefore: icons.filter(({ i }) => i < first).pop()?.attrs || null,
+                iconAfter: icons.find(({ i }) => i > last)?.attrs || null,
+                children: processInlineElements(content, options),
+            },
+        }];
     }
 
-    // Extract links with all their attributes
+    // Several links. An icon among them belongs to no one link, and is not carried.
     return groups.map(({ mark, label }) => ({
         type: "link",
         attrs: {

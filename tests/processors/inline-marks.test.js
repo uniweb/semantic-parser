@@ -155,8 +155,10 @@ describe("a link's role", () => {
     expect(out).toBe('see <a href="/d" target="_self">x</a>.');
   });
 
-  test("a heading whose every run is one button keeps the role", () => {
-    // `isStyledLink` — the block whose runs all carry the same link, drawn as one anchor.
+  test("a block whose every run carries one button draws one anchor that keeps the role", () => {
+    // `isStyledLink` — the block whose runs all carry the same link, drawn as one
+    // anchor. It returns a paragraph, for a heading too: the element this tests is
+    // no longer a heading (pre-existing — `isStyledLink` has always done so).
     const b = button("/go");
     const heading = {
       type: "doc",

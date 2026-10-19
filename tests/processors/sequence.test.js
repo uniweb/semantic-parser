@@ -382,9 +382,76 @@ describe("processSequence", () => {
       expect(result.map((l) => l.attrs.label)).toEqual(["Go", "Go"]);
     });
 
+    test("a one-link paragraph in several runs keeps its icons, as a one-run link does", () => {
+      // `![](lu-star) [**Go** now](/go){button}`. ⛔ Until 2026-10-19 the star was dropped.
+      const button = { type: "button", attrs: { href: "/go" } };
+      const star = { type: "image", attrs: { role: "icon", library: "lu", name: "star" } };
+      const runs = [
+        { type: "text", text: "Go", marks: [button, { type: "bold" }] },
+        { type: "text", text: " now", marks: [button] },
+      ];
+      const one = (content) => processSequence({ type: "doc", content: [{ type: "paragraph", content }] })
+
+      const before = one([star, { type: "text", text: " " }, ...runs]);
+      expect(before).toHaveLength(1);
+      expect(before[0].attrs).toMatchObject({ label: "Go now", role: "button", iconBefore: { library: "lu", name: "star" }, iconAfter: null });
+
+      const after = one([...runs, { type: "text", text: " " }, star]);
+      expect(after[0].attrs).toMatchObject({ iconBefore: null, iconAfter: { library: "lu", name: "star" } });
+
+      // CONTROL — the one-run link, which `isLink` reads
+      const plain = one([star, { type: "text", text: " " }, { type: "text", text: "Go now", marks: [button] }]);
+      expect(plain[0].attrs).toMatchObject({ label: "Go now", iconBefore: { library: "lu", name: "star" } });
+    });
+
+    test("a link in several runs inside a sentence is one link among the paragraph's children", () => {
+      // `Read [the *full* guide](/guide) first.` — the children are what
+      // `content.links` is made of. ⛔ Until 2026-10-19 they held "the ", "full" and " guide".
+      const link = { type: "link", attrs: { href: "/guide" } };
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Read " },
+              { type: "text", text: "the ", marks: [link] },
+              { type: "text", text: "full", marks: [link, { type: "italic" }] },
+              { type: "text", text: " guide", marks: [link] },
+              { type: "text", text: " first." },
+            ],
+          },
+        ],
+      };
+
+      const links = processSequence(doc)[0].children.filter((c) => c.type === "link");
+      expect(links).toEqual([{ type: "link", attrs: { href: "/guide", label: "the full guide" } }]);
+    });
+
+    test("CONTROL — two links in a sentence stay two, with text between", () => {
+      const a = { type: "link", attrs: { href: "/a" } };
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "A", marks: [a] },
+              { type: "text", text: " and " },
+              { type: "text", text: "A", marks: [a] },
+            ],
+          },
+        ],
+      };
+
+      const links = processSequence(doc)[0].children.filter((c) => c.type === "link");
+      expect(links.map((l) => l.attrs.label)).toEqual(["A", "A"]);
+    });
+
     test("multiple links with icons - icons not associated with links", () => {
-      // Icons in multi-link paragraphs are not associated with specific links
-      // They go to body.icons separately when processed through groups
+      // Icons in multi-link paragraphs are not associated with specific links,
+      // and are not carried: none reaches body.icons either (measured
+      // 2026-10-19 through parseContent — this said they went there).
       const doc = {
         type: "doc",
         content: [
