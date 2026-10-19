@@ -182,3 +182,26 @@ describe("markup a node carries", () => {
         expect(para.children[0].attrs).toEqual({ library: "lu", name: "x" });
     });
 });
+
+describe("a code block", () => {
+    // Its code is TEXT, and stays text: every consumer draws it as text (kit's
+    // `Code` and the highlighter, press's `CodeBlock`, a foundation's
+    // `{snippet.code}`), which escapes it there. ⛔ Until 2026-10-19 it was
+    // escaped here as well, for the HTML strings a paragraph carries, so a page
+    // showed `&lt;p&gt;` for `<p>`.
+    const code = (t, attrs = { language: "html" }) => ({ type: "doc", content: [{ type: "codeBlock", attrs, content: [text(t)] }] });
+
+    test("holds its code as written — characters and indentation", () => {
+        const [block] = processSequence(code("  <p>Hi & bye</p>\n<br>"));
+        expect(block).toMatchObject({ type: "codeBlock", text: "  <p>Hi & bye</p>\n<br>" });
+    });
+
+    test("a tagged block the reader could not parse keeps its text as written too", () => {
+        const [block] = processSequence(code("  a < b & [valid", { language: "yaml", tag: "cfg" }));
+        expect(block).toMatchObject({ type: "dataBlock", tag: "cfg", data: "  a < b & [valid" });
+    });
+
+    test("CONTROL — a paragraph's text is still escaped, for the HTML it is drawn as", () => {
+        expect(render([text("<p>Hi & bye</p>")])).toBe("&lt;p&gt;Hi &amp; bye&lt;/p&gt;");
+    });
+});

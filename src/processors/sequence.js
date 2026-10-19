@@ -161,7 +161,7 @@ function createSequenceElement(node, options = {}) {
             };
 
         case "codeBlock": {
-            const codeText = getTextContent(content, options);
+            const codeText = codeTextOf(content);
             // Tagged code blocks are semantically data blocks, not code — the
             // tag is what routes them to `data[tag]`, so the routing holds even
             // though the payload here is raw text.
@@ -374,6 +374,21 @@ function sameLink(a, b) {
 /**
  * Wrap already-styled inline content in an anchor.
  */
+/**
+ * A code block's code, as written — the characters a reader sees, not HTML.
+ *
+ * Every consumer draws it as text: kit's `Code` (and the highlighter, which
+ * escapes as it colors), press's `CodeBlock`, a foundation's `{snippet.code}`.
+ * ⛔ Until 2026-10-19 it went through `getTextContent`, which escapes text for
+ * the HTML strings a paragraph carries, so a `<` arrived as `&lt;`, was escaped
+ * again where it was drawn, and a page showed `&lt;p&gt;` for `<p>`.
+ */
+function codeTextOf(content) {
+    return (content || [])
+        .map((node) => (node?.type === "text" ? node.text || "" : node?.type === "hardBreak" ? "\n" : ""))
+        .join("");
+}
+
 function wrapLink(inner, linkMark) {
     return anchor(linkMark.attrs.href, linkMark.attrs.target, inner, linkMark.attrs.role);
 }

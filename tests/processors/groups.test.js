@@ -317,3 +317,12 @@ describe("processGroups", () => {
         expect(result.links).toHaveLength(0);
     });
 });
+
+describe("a snippet's code is its text as written", () => {
+    // `content.snippets[].code` — what a foundation draws a code sample from.
+    test("never HTML-escaped", async () => {
+        const { parseContent } = await import("../../src/index.js");
+        const doc = { type: "doc", content: [{ type: "codeBlock", attrs: { language: "html" }, content: [{ type: "text", text: "<a href=\"/x\">&</a>" }] }] };
+        expect(parseContent(doc).snippets).toEqual([{ language: "html", code: "<a href=\"/x\">&</a>" }]);
+    });
+});
