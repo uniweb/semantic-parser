@@ -340,6 +340,48 @@ describe("processSequence", () => {
       expect(result[1].attrs.href).toBe("/about");
     });
 
+    test("a link whose label has several runs is ONE link — a button labelled in two styles stays one button", () => {
+      // `[**Go** now](/go){button}`. ⛔ Until 2026-10-19 each run was a link of
+      // its own: two buttons, "Go" and " now".
+      const button = { type: "button", attrs: { href: "/go" } };
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Go", marks: [button, { type: "bold" }] },
+              { type: "text", text: " now", marks: [button] },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ type: "link", attrs: { href: "/go", role: "button", label: "Go now" } });
+    });
+
+    test("CONTROL — the same link twice, with a space between, is two links", () => {
+      const link = { type: "link", attrs: { href: "/x" } };
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Go", marks: [link] },
+              { type: "text", text: " " },
+              { type: "text", text: "Go", marks: [link] },
+            ],
+          },
+        ],
+      };
+
+      const result = processSequence(doc);
+      expect(result.map((l) => l.attrs.label)).toEqual(["Go", "Go"]);
+    });
+
     test("multiple links with icons - icons not associated with links", () => {
       // Icons in multi-link paragraphs are not associated with specific links
       // They go to body.icons separately when processed through groups

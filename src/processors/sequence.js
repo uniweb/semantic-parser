@@ -1070,18 +1070,35 @@ function isOnlyLinks(item) {
 
     if (!allLinks) return false;
 
-    // Extract links with all their attributes
+    // One link per anchor, as `getTextContent` draws them: consecutive runs that
+    // carry the same link are ONE link whose label has several runs
+    // (`[**Go** now](/go)`), and anything between two links — the space a line
+    // break becomes, an icon — keeps them apart. ⛔ Until 2026-10-19 every run
+    // was a link of its own, so a button labelled in two styles became two
+    // buttons, "Go" and " now".
     // Icons in this paragraph go to body.icons separately (no association)
-    return textContent.map((c) => {
-        const linkMark = linkMarkOf(c.marks);
-        return {
-            type: "link",
-            attrs: {
-                ...linkMark?.attrs,  // Preserve all link attributes (role, target, etc.)
-                label: c.text || "",
-            },
-        };
-    });
+    const groups = [];
+    let current = null;
+    for (const c of content) {
+        const mark = c.type === "text" ? linkMarkOf(c.marks) : null;
+        if (mark && current && sameLink(current.mark, mark)) {
+            current.label += c.text || "";
+        } else if (mark) {
+            current = { mark, label: c.text || "" };
+            groups.push(current);
+        } else {
+            current = null;
+        }
+    }
+
+    // Extract links with all their attributes
+    return groups.map(({ mark, label }) => ({
+        type: "link",
+        attrs: {
+            ...mark?.attrs,  // Preserve all link attributes (role, target, etc.)
+            label,
+        },
+    }));
 }
 
 // method to check if given item has multiple content parts and each of them has the same link attrs with different inline style (plain, em, strong, u)
