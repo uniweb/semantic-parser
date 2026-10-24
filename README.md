@@ -298,6 +298,13 @@ A renderer that reads `text` as HTML and does not know a marker draws
 nothing for it, as for any empty element it does not know. kit's `<Render>`
 draws an icon with `<Icon>` and a picture with `<Image>`.
 
+An icon **before any text** is the element's own icon, not part of its prose:
+`![](lu-cloud)` on a line of its own, `- ![](lu-globe) Web App`, or
+`## ![](lu-zap) Fast`. The flat fields (`title`, `paragraphs`, a list item's)
+leave out its marker, since a component draws that icon from `icons`, beside
+the words. So a line holding only icons adds no paragraph. The `sequence`
+keeps every marker, for a renderer that draws each icon where it sat.
+
 ## Use Cases
 
 - **Component-based websites**: Extract structured data for React/Vue components

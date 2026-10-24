@@ -286,6 +286,29 @@ function readStack(sequence, startIdx, options = {}) {
     return { pre, title, sub, length: i - startIdx };
 }
 
+/**
+ * An element's text as a flat field holds it, without the markers of the icons before its words.
+ *
+ * ⭐ An icon before any text is the element's own icon, not part of its prose: `![](lu-cloud)` on
+ * a line of its own, `- ![](lu-globe) Web App`, `## ![](lu-zap) Fast`. The flat fields (`title`,
+ * `paragraphs`, a list item's) hold the text a component draws beside that icon, which it finds
+ * in `icons`. So the markers before the words go, and a line holding only icons leaves no
+ * paragraph. An icon inside the prose keeps its marker, with its ordinal unchanged, since `icons`
+ * still lists the leading ones. The `sequence` keeps every marker: kit's `Render` draws each icon
+ * where it sat [Diego, 2026-10-24].
+ *
+ * ⛔ From 2026-08-12 to 2026-10-24 the flat fields kept the leading markers. An icon-only line
+ * became a paragraph of nothing but `<uniweb-icon data-index="0"></uniweb-icon>`, which moved
+ * `paragraphs[0]` off the text, and a component drawing a paragraph as text showed the markup.
+ *
+ * @param {*} text
+ * @returns {*} the text without its leading icon markers; anything that is no string, as it came
+ */
+function flatText(text) {
+    if (typeof text !== "string") return text;
+    return text.replace(/^(?:\s*<uniweb-icon data-index="\d+"><\/uniweb-icon>)+\s*/, "");
+}
+
 /** Collapse a slot's texts: none → '', one → string, several → array. */
 function flattenSlot(texts) {
     if (texts.length === 0) return "";
@@ -346,9 +369,9 @@ function processGroupContent(elements, options = {}) {
     let start = 0;
     if (elements[0]?.type === "heading") {
         const stack = readStack(elements, 0, options);
-        header.pretitle = flattenSlot(stack.pre.map((el) => el.text));
-        header.title = flattenSlot(stack.title.map((el) => el.text));
-        header.subtitle = flattenSlot(stack.sub.map((el) => el.text));
+        header.pretitle = flattenSlot(stack.pre.map((el) => flatText(el.text)));
+        header.title = flattenSlot(stack.title.map((el) => flatText(el.text)));
+        header.subtitle = flattenSlot(stack.sub.map((el) => flatText(el.text)));
         metadata.level = stack.title[0]?.level ?? null;
         for (const el of [...stack.pre, ...stack.title, ...stack.sub]) {
             if (el.children && Array.isArray(el.children))
@@ -366,7 +389,7 @@ function processGroupContent(elements, options = {}) {
             // array — section content is split into groups before this runs.
             if (element.children && Array.isArray(element.children))
                 processInlineElements(element.children, body);
-            body.headings.push(element.text);
+            body.headings.push(flatText(element.text));
         } else if (element.type === "list") {
             const listItems = element.children;
 
@@ -383,7 +406,10 @@ function processGroupContent(elements, options = {}) {
                     if (element.children && Array.isArray(element.children))
                         processInlineElements(element.children, body);
 
-                    if (element.text) body.paragraphs.push(element.text);
+                    {
+                        const flat = flatText(element.text);
+                        if (flat) body.paragraphs.push(flat);
+                    }
                     break;
 
                 case "image":

@@ -342,11 +342,15 @@ describe('an icon is an image with role icon, as markdown reads it', () => {
 
   test('parseContent(buildDoc(x)) round-trips, as `![](lucide-star)` on a line of its own does', () => {
     // The documented invariant of this builder, and what <Icon library name />
-    // consumes downstream. Like that line, the icon is a paragraph of its own,
-    // holding the icon's inline marker — where kit's Render puts the <Icon>.
+    // consumes downstream. Like that line, the icon is the content's icon: in `icons`, and in
+    // the sequence a paragraph holding its marker, where kit's Render puts the <Icon>. The flat
+    // `paragraphs` hold no text for it (2026-10-24).
     const parsed = parseContent(buildDoc({ icons: [{ library: 'lucide', name: 'star' }] }))
     expect(parsed.icons).toEqual([{ library: 'lucide', name: 'star' }])
-    expect(parsed.paragraphs).toEqual(['<uniweb-icon data-index="0"></uniweb-icon>'])
+    expect(parsed.paragraphs).toEqual([])
+    expect(parsed.sequence.filter((e) => e.type === 'paragraph').map((e) => e.text)).toEqual([
+      '<uniweb-icon data-index="0"></uniweb-icon>',
+    ])
   })
 
   test('a file-sourced icon is its address, in `src`', () => {
