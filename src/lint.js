@@ -55,6 +55,18 @@ export function lintContent(doc, options = {}) {
         if (first.length === 1 && first[0].type === "paragraph" && laterTitled) {
             const text = stripTags(first[0].text).trim();
             const words = text.split(/\s+/).filter(Boolean);
+            // An icon reads as decoration rather than body, so nobody expects it to demote
+            // the title. Several such groups are a deliberate list of cards, and left alone.
+            if (!text && first[0].text?.includes("<uniweb-icon") && stacks.length === 2) {
+                findings.push({
+                    rule: "icon-above-title",
+                    severity: "warning",
+                    message:
+                        `An icon above the first heading makes the section an untitled body, with the ` +
+                        `heading as its only item. If the icon belongs to the title, write it under ` +
+                        `the heading: it's still content.icons[0].`,
+                });
+            }
             if (words.length > 0 && words.length <= 6 && !/[.!?]$/.test(text)) {
                 findings.push({
                     rule: "label-as-text",

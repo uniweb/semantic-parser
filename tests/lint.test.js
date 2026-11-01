@@ -45,6 +45,26 @@ const EXPECTED = {
     "label-untitled": [],
 };
 
+describe("icon-above-title", () => {
+    // The documents content-reader makes of each test's markdown.
+    const icon = { type: "paragraph", content: [{ type: "image", attrs: { src: null, caption: null, alt: null, role: "icon", library: "lu", name: "globe" } }] };
+    const heading = (level, text) => ({ type: "heading", attrs: { level, id: null }, content: [{ type: "text", text }] });
+    const body = { type: "paragraph", content: [{ type: "text", text: "Body." }] };
+    const rules = (...content) => lintContent({ type: "doc", content }).map((f) => f.rule);
+
+    it("names an icon alone above the only heading", () => {
+        expect(rules(icon, heading(1, "Title"), body)).toContain("icon-above-title");
+    });
+
+    it("leaves a list of icons with headings alone", () => {
+        expect(rules(icon, heading(3, "One"), body, icon, heading(3, "Two"), body)).not.toContain("icon-above-title");
+    });
+
+    it("leaves an icon under the heading alone", () => {
+        expect(rules(heading(1, "Title"), icon, body)).not.toContain("icon-above-title");
+    });
+});
+
 describe("lintContent — scored against the intent corpus", () => {
     for (const row of rows) {
         test(`${row.name} → [${EXPECTED[row.name]?.join(", ") ?? "?"}]`, () => {
