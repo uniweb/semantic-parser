@@ -588,10 +588,12 @@ function processInlineElements(children, body) {
         } else if (item.type === "document") {
             // And an inline `{role=pdf}` in documents[].
             body.documents.push(item.attrs);
-        } else if (item.type === "link") {
-            // Handle inline links extracted from paragraph text nodes
-            body.links.push(item.attrs);
         }
+        // A link inside a sentence stays in the sentence: `links` holds the links that stand on
+        // their own line, which reach it as `link` elements. ⛔ From 2026-01-17 until 2026-10-31
+        // this also copied every link out of every paragraph, a fix for two links on consecutive
+        // lines that never checked the paragraph held only links. So a section drawing `links`
+        // drew a sentence's link a second time, and `links[0]` could be one from the prose.
     });
 }
 
