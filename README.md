@@ -314,4 +314,4 @@ keeps every marker, for a renderer that draws each icon where it sat.
 
 ## License
 
-GPL-3.0-or-later
+Apache-2.0

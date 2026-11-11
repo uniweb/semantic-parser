@@ -21,7 +21,7 @@
         "content"
     ],
     "author": "Proximify Inc.",
-    "license": "GPL-3.0-or-later",
+    "license": "Apache-2.0",
     "devDependencies": {
         "vitest": "^4.1.7"
     },
