@@ -360,6 +360,32 @@ export const recorded = {
             }
         ]
     },
+    "label-on-first-item": {
+        "title": "Team",
+        "items": [
+            {
+                "pretitle": "Professor",
+                "title": "Ada Lovelace",
+                "paragraphs": [
+                    "She wrote the first programs."
+                ]
+            },
+            {
+                "pretitle": "Student",
+                "title": "Alan Turing",
+                "paragraphs": [
+                    "He broke the codes."
+                ]
+            }
+        ]
+    },
+    "label-after-title": {
+        "pretitle": "Now shipping",
+        "title": "Build the system.",
+        "paragraphs": [
+            "One content, many sites."
+        ]
+    },
     "label-untitled": {
         "pretitle": "Case study",
         "paragraphs": [

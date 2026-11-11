@@ -603,6 +603,60 @@ Everything in Free.`,
     },
 
     {
+        name: "label-on-first-item",
+        intent:
+            "Each entry labelled with a `#>` line, the first written straight under a bodiless title.",
+        source: `# Team
+#> Professor
+### Ada Lovelace
+She wrote the first programs.
+#> Student
+### Alan Turing
+He broke the codes.`,
+        doc: doc(
+            h(1, "Team"),
+            label("Professor"),
+            h(3, "Ada Lovelace"),
+            p("She wrote the first programs."),
+            label("Student"),
+            h(3, "Alan Turing"),
+            p("He broke the codes.")
+        ),
+        intended: {
+            title: "Team",
+            items: [
+                {
+                    pretitle: "Professor",
+                    title: "Ada Lovelace",
+                    paragraphs: ["She wrote the first programs."],
+                },
+                {
+                    pretitle: "Student",
+                    title: "Alan Turing",
+                    paragraphs: ["He broke the codes."],
+                },
+            ],
+        },
+        note: "Guards label-binds-forward with no body between the title and the first label. Until 2026-11-10 that label became the section's pretitle.",
+    },
+
+    {
+        name: "label-after-title",
+        intent:
+            "An eyebrow written under its title rather than above it, with the lead paragraph after.",
+        source: `# Build the system.
+#> Now shipping
+One content, many sites.`,
+        doc: doc(h(1, "Build the system."), label("Now shipping"), p("One content, many sites.")),
+        intended: {
+            pretitle: "Now shipping",
+            title: "Build the system.",
+            paragraphs: ["One content, many sites."],
+        },
+        note: "A label line says what it is wherever it lands: above body, it names the block it sits in.",
+    },
+
+    {
         name: "label-untitled",
         intent:
             "A `#>` label above an untitled section labels the untitled main body.",

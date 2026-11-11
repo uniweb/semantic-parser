@@ -211,8 +211,15 @@ function isBannerImage(sequence, i) {
  * back up — ends the stack, and the rest of the run starts a new block.
  *
  * Before the title: `#>` label lines, and any smaller headings ascending to a
- * more important one, are the pretitle. A label line anywhere in the stack
- * also names the block — it never competes for the title.
+ * more important one, are the pretitle. After the title, a label line names
+ * this block when body, the end, or a line of this headline follows it; written
+ * straight above a heading that starts the next block, it is that block's, so
+ * the stack ends before it. A label never competes for the title.
+ *
+ * ⛔ Until 2026-11-10 a label anywhere after the title named this block, so an
+ * entry's label written straight under a bodiless title (`# Team`, `#> Role`,
+ * `### Name`) became the section's pretitle, and only the first entry lost its
+ * own. The docs had always said a label "names the block that starts next".
  *
  * `alwaysItems` (a tagged concept block's grouping) suppresses the same-size
  * continuation: two bodiless same-level headings are two ITEMS, not one
@@ -268,22 +275,39 @@ function readStack(sequence, startIdx, options = {}) {
     while (i < sequence.length && sequence[i].type === "heading") {
         const el = sequence[i];
         if (isLabel(el)) {
-            // A label inside the stack still names this block.
-            pre.push(el);
-            i++;
-        } else if (el.level === prevLevel && !options.alwaysItems) {
+            // A label names the block it opens. Labels written straight above a
+            // heading that starts the next block are that block's pretitle, so
+            // this stack ends before them. Above body, the end, or a line that
+            // continues this headline, they name this block.
+            let next = i;
+            while (next < sequence.length && isLabel(sequence[next])) next++;
+            const after = sequence[next];
+            if (after?.type === "heading" && !continuesHeadline(after, prevLevel, options)) break;
+            pre.push(...sequence.slice(i, next));
+            i = next;
+        } else if (!continuesHeadline(el, prevLevel, options)) {
+            break; // two+ steps down, or back up: a new block starts here
+        } else if (el.level === prevLevel) {
             part.push(el); // another line of the same part
             i++;
-        } else if (el.level === prevLevel + 1) {
+        } else {
             sub.push(el); // the next line of the headline, one step down
             part = sub;
             prevLevel = el.level;
             i++;
-        } else {
-            break; // two+ steps down, or back up: a new block starts here
         }
     }
     return { pre, title, sub, length: i - startIdx };
+}
+
+/**
+ * Whether a heading written right after a headline's last line (at `prevLevel`)
+ * extends the headline: a line of the same size, unless `alwaysItems` makes
+ * each one an item, or one step smaller. Anything else starts a new block.
+ * The one test, so a label's binding and the stack's end cannot disagree.
+ */
+function continuesHeadline(el, prevLevel, options = {}) {
+    return (el.level === prevLevel && !options.alwaysItems) || el.level === prevLevel + 1;
 }
 
 /**

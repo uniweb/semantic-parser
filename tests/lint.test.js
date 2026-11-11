@@ -42,6 +42,8 @@ const EXPECTED = {
     "event-cover": [],
     "stepped-items-under-subtitle": [],
     "label-on-item": [],
+    "label-on-first-item": [],
+    "label-after-title": [],
     "label-untitled": [],
 };
 
