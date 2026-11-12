@@ -772,6 +772,16 @@ function secondaryAssetUrl(attrs, options, urlAttr) {
     return resolved || attrs?.[urlAttr] || "";
 }
 
+/**
+ * The poster a host makes of an uploaded video, at the address its pattern
+ * names (`config.assets.poster`, with the same `{id}` and `{ext}` as
+ * `config.assets.url`), or "" where the host states none or the video is not an
+ * uploaded asset. Derived where the page renders, so nothing is stored.
+ */
+function hostPoster(attrs, options) {
+    return resolveAssetUrl(attrs?.assetId, attrs?.assetExt, options?.assets?.poster);
+}
+
 // A document authored in markdown: `![Annual report](./report.pdf){role=pdf …}`.
 //
 // Read through `parseImgBlock`, which resolves the address and the preview's the
@@ -945,7 +955,10 @@ function parseMarkdownVideo(itemAttrs, options) {
     // kit's <Media> supplies its own defaults (controls on, the rest off).
     // A poster is an asset like any other — identity resolves it when it can,
     // and the stored URL stands when it cannot. Same rule as the primary `src`.
-    const posterUrl = secondaryAssetUrl(itemAttrs, options, "poster");
+    // ⭐ A video that names none takes the one its host makes of it, where the
+    // host states their address (`config.assets.poster`): a still of the uploaded
+    // video, never stored in content. The node's own poster always wins.
+    const posterUrl = secondaryAssetUrl(itemAttrs, options, "poster") || hostPoster(itemAttrs, options);
     if (posterUrl) video.poster = posterUrl;
     if (autoplay !== undefined) video.autoplay = autoplay;
     if (muted !== undefined) video.muted = muted;

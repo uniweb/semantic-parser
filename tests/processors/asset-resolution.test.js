@@ -284,3 +284,37 @@ describe('a poster is an asset like any other', () => {
     expect(el.attrs.preview).toBe(`https://cdn.example/x/${ID}/base.png`)
   })
 })
+
+describe("a video's poster, from its host", () => {
+  // A host that makes a still of each uploaded video states where it is, as a pattern with the same
+  // placeholders as `config.assets.url`. Derived as the page renders: nothing is stored.
+  const POSTER = 'https://cdn.example/x/{id}/base.{ext}?poster'
+  const videoWith = (attrs, options) =>
+    parseContent({ type: 'doc', content: [{ type: 'image', attrs: { role: 'video', ...attrs } }] }, options)
+      .sequence.find((e) => e.type === 'video')
+
+  it('⭐ an uploaded video that names no poster takes the one its host states', () => {
+    const el = videoWith({ assetId: ID, assetExt: 'mp4' }, { assets: { url: TEMPLATE, poster: POSTER } })
+    expect(el.attrs.src).toBe(`https://cdn.example/x/${ID}/base.mp4`)
+    expect(el.attrs.poster).toBe(`https://cdn.example/x/${ID}/base.mp4?poster`)
+  })
+
+  it("the node's own poster wins, an address or an uploaded picture", () => {
+    const options = { assets: { url: TEMPLATE, poster: POSTER } }
+    expect(videoWith({ assetId: ID, assetExt: 'mp4', poster: '/own.jpg' }, options).attrs.poster).toBe('/own.jpg')
+    const posterId = 'b'.repeat(64)
+    expect(
+      videoWith({ assetId: ID, assetExt: 'mp4', posterAssetId: posterId, posterAssetExt: 'webp' }, options).attrs.poster
+    ).toBe(`https://cdn.example/x/${posterId}/base.webp`)
+  })
+
+  it('CONTROL: no poster where the host states none', () => {
+    expect(videoWith({ assetId: ID, assetExt: 'mp4' }, { assets: { url: TEMPLATE } }).attrs.poster).toBeUndefined()
+  })
+
+  it('no host poster for a video that is not an uploaded asset', () => {
+    const el = videoWith({ src: '/clip.mp4' }, { assets: { url: TEMPLATE, poster: POSTER } })
+    expect(el.attrs.src).toBe('/clip.mp4')
+    expect(el.attrs.poster).toBeUndefined()
+  })
+})
