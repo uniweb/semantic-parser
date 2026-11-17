@@ -474,7 +474,8 @@ function renderInlineNode(curr, iconOrdinals, pictureOrdinals) {
             if (type === "text") {
                 let styledText = escapeText(text || "");
 
-                // Apply marks in order: span, code, bold, italic, strike — the link
+                // Apply marks in order: span, code, bold, italic, strike, underline,
+                // superscript, subscript — the link
                 // is applied per group by getTextContent. This ensures proper nesting.
                 //
                 // ⛔ Until 2026-10-18 the editor's `textStyle` (a theme color) and
@@ -538,6 +539,19 @@ function renderInlineNode(curr, iconOrdinals, pictureOrdinals) {
                 // mark, so struck text reached the page as ordinary text.
                 if (marks.some((mark) => mark.type === "strike")) {
                     styledText = `<s>${styledText}</s>`;
+                }
+
+                // underline, superscript, subscript — `[x]{underline}`, `[2]{sup}`,
+                // `[2]{sub}`: marks with one meaning, drawn by the browser and read by
+                // Press's documents as underline, superscript and subscript (2026-11-17).
+                if (marks.some((mark) => mark.type === "underline")) {
+                    styledText = `<u>${styledText}</u>`;
+                }
+                if (marks.some((mark) => mark.type === "superscript")) {
+                    styledText = `<sup>${styledText}</sup>`;
+                }
+                if (marks.some((mark) => mark.type === "subscript")) {
+                    styledText = `<sub>${styledText}</sub>`;
                 }
 
                 // The link mark is deliberately NOT applied here — it is the

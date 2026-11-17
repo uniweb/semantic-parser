@@ -575,10 +575,16 @@ export function isLinkTarget(target) {
 
 const STYLE_NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
-/** Attribute names a browser reads as a URL, a style or an element's identity. */
+/**
+ * Attribute names a browser reads as a URL, a style or an element's identity — and
+ * the names a bracketed span writes for a mark of its own (`[x]{underline}`,
+ * `[2]{sup}`, `[2]{sub}`; content-reader's `MARK_NAMES`), which no theme can style
+ * since they are never a span's (2026-11-17).
+ */
 const NOT_A_STYLE_NAME = [
     "href", "src", "srcset", "srcdoc", "action", "formaction", "style",
     "background", "poster", "xmlns", "is", "slot",
+    "underline", "sup", "sub",
 ];
 const NOT_A_STYLE_NAME_SET = new Set(NOT_A_STYLE_NAME);
 
